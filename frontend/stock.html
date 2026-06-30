@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock — Boutique D</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    .stock-tabs {
+      display: flex; gap: 4px;
+      background: white;
+      border: 1px solid var(--border);
+      padding: 4px; border-radius: 10px;
+      margin-bottom: 22px; width: fit-content;
+      box-shadow: var(--shadow);
+    }
+    .tab-btn {
+      padding: 8px 18px; border-radius: 7px; border: none;
+      background: none; cursor: pointer;
+      font-weight: 600; font-size: .85rem;
+      color: var(--text-muted); transition: all .15s;
+      display: flex; align-items: center; gap: 7px;
+      font-family: var(--font);
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      box-shadow: 0 4px 10px rgba(79,70,229,.3);
+    }
+    .tab-btn:not(.active):hover { background: var(--bg); color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .stock-status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 2px; }
+    .dot-normal  { background: #10b981; }
+    .dot-bas     { background: #f59e0b; }
+    .dot-rupture { background: #ef4444; }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="sidebar-overlay"></div>
+<div class="layout">
+  <header class="topbar">
+    <button class="topbar-menu-btn" id="menu-btn"><i class="bi bi-list"></i></button>
+    <div class="topbar-brand">
+      <div class="brand-icon"><i class="bi bi-bag-fill"></i></div>
+      Boutique D
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-user" id="topbar-user"></div>
+    <button class="btn btn-ghost btn-sm" id="btn-logout">
+      <i class="bi bi-box-arrow-right"></i> Déconnexion
+    </button>
+  </header>
+
+  <nav class="sidebar">
+    <div class="sidebar-section">Principal</div>
+    <a href="dashboard.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="icon"><i class="bi bi-grid-1x2-fill"></i></span> Dashboard
+    </a>
+    <a href="pos.html" class="nav-item">
+      <span class="icon"><i class="bi bi-cash-register"></i></span> Caisse (POS)
+    </a>
+    <div class="sidebar-section" data-role="proprietaire,gestionnaire">Stock</div>
+    <a href="stock.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="icon"><i class="bi bi-boxes"></i></span> Stock
+      <span class="nav-badge hidden" id="alert-badge">0</span>
+    </a>
+    <a href="products.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="icon"><i class="bi bi-tag-fill"></i></span> Produits
+    </a>
+    <div class="sidebar-section" data-role="proprietaire">Gestion</div>
+    <a href="users.html" class="nav-item" data-role="proprietaire">
+      <span class="icon"><i class="bi bi-people-fill"></i></span> Utilisateurs
+    </a>
+    <a href="reports.html" class="nav-item" data-role="proprietaire">
+      <span class="icon"><i class="bi bi-bar-chart-fill"></i></span> Rapports
+    </a>
+  </nav>
+
+  <main class="main">
+    <div class="page-title">
+      <div class="page-icon" style="background:linear-gradient(135deg,#10b981,#059669)">
+        <i class="bi bi-boxes"></i>
+      </div>
+      Stock &amp; Inventaire
+    </div>
+
+    <!-- Tabs -->
+    <div class="stock-tabs">
+      <button class="tab-btn active" data-tab="stock">
+        <i class="bi bi-bar-chart-steps"></i> Vue Stock
+      </button>
+      <button class="tab-btn" data-tab="entries">
+        <i class="bi bi-box-arrow-in-down"></i> Entrées
+      </button>
+      <button class="tab-btn" data-tab="exits">
+        <i class="bi bi-box-arrow-up"></i> Sorties
+      </button>
+      <button class="tab-btn" data-tab="inventories">
+        <i class="bi bi-clipboard2-check"></i> Inventaires
+      </button>
+    </div>
+
+    <!-- Tab: Vue stock -->
+    <div class="tab-panel active" id="tab-stock">
+      <div class="kpi-grid mb-6" id="stock-kpis">
+        <div class="skeleton" style="height:96px;border-radius:12px"></div>
+        <div class="skeleton" style="height:96px;border-radius:12px"></div>
+        <div class="skeleton" style="height:96px;border-radius:12px"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="bi bi-list-ul" style="color:#4f46e5"></i> Tous les produits
+          </div>
+          <div style="position:relative">
+            <i class="bi bi-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none"></i>
+            <input class="form-control" id="stock-search" placeholder="Filtrer…" style="padding-left:34px;max-width:220px">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th>Catégorie</th>
+                <th>Stock actuel</th>
+                <th>Seuil alerte</th>
+                <th>Valeur stock</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody id="stock-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Entrées -->
+    <div class="tab-panel" id="tab-entries">
+      <div class="flex justify-between items-center mb-4">
+        <span class="font-bold" style="font-size:1rem">Réceptions de marchandise</span>
+        <button class="btn btn-primary" id="btn-add-entry">
+          <i class="bi bi-plus-lg"></i> Nouvelle réception
+        </button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th><th>Produit</th><th>Quantité</th>
+                <th>Prix achat</th><th>Fournisseur</th><th>N° Facture</th><th>Reçu par</th>
+              </tr>
+            </thead>
+            <tbody id="entries-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Sorties -->
+    <div class="tab-panel" id="tab-exits">
+      <div class="flex justify-between items-center mb-4">
+        <span class="font-bold" style="font-size:1rem">Sorties manuelles (casse, perte…)</span>
+        <button class="btn btn-accent" id="btn-add-exit">
+          <i class="bi bi-plus-lg"></i> Déclarer une sortie
+        </button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th><th>Produit</th><th>Quantité</th>
+                <th>Motif</th><th>Notes</th><th>Par</th>
+              </tr>
+            </thead>
+            <tbody id="exits-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Inventaires -->
+    <div class="tab-panel" id="tab-inventories">
+      <div class="flex justify-between items-center mb-4">
+        <span class="font-bold" style="font-size:1rem">Inventaires physiques</span>
+        <button class="btn btn-primary" id="btn-add-inventory" data-role="proprietaire,gestionnaire">
+          <i class="bi bi-plus-lg"></i> Nouvel inventaire
+        </button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nom</th><th>Type</th><th>Statut</th>
+                <th>Produits</th><th>Créé le</th><th>Validé par</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="inventories-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal: Nouvelle entrée stock -->
+<div class="modal-backdrop" id="modal-entry">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">
+        <i class="bi bi-box-arrow-in-down" style="color:#10b981"></i> Réception de marchandise
+      </span>
+      <button class="modal-close" data-dismiss><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Produit *</label>
+        <select class="form-control form-select" id="e-product"></select>
+      </div>
+      <div class="grid grid-2 gap-3">
+        <div class="form-group">
+          <label class="form-label">Quantité reçue *</label>
+          <input class="form-control" id="e-qty" type="number" min="1" placeholder="Ex: 50">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Prix achat unitaire (FCFA) *</label>
+          <input class="form-control" id="e-price" type="number" min="0" placeholder="Ex: 450">
+        </div>
+      </div>
+      <div class="grid grid-2 gap-3">
+        <div class="form-group">
+          <label class="form-label">Fournisseur</label>
+          <input class="form-control" id="e-supplier" type="text" placeholder="Nom fournisseur">
+        </div>
+        <div class="form-group">
+          <label class="form-label">N° Facture</label>
+          <input class="form-control" id="e-invoice" type="text" placeholder="FAC-2026-001">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date péremption</label>
+        <input class="form-control" id="e-expiry" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" id="e-notes" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss>Annuler</button>
+      <button class="btn btn-primary" id="btn-save-entry"><i class="bi bi-check-lg"></i> Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nouvelle sortie -->
+<div class="modal-backdrop" id="modal-exit">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <span class="modal-title">
+        <i class="bi bi-box-arrow-up" style="color:#f59e0b"></i> Déclarer une sortie
+      </span>
+      <button class="modal-close" data-dismiss><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Produit *</label>
+        <select class="form-control form-select" id="ex-product"></select>
+      </div>
+      <div class="grid grid-2 gap-3">
+        <div class="form-group">
+          <label class="form-label">Quantité *</label>
+          <input class="form-control" id="ex-qty" type="number" min="1" placeholder="Ex: 3">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Motif *</label>
+          <select class="form-control form-select" id="ex-reason">
+            <option value="casse">Casse</option>
+            <option value="peremption">Péremption</option>
+            <option value="usage_interne">Usage interne</option>
+            <option value="perte">Perte</option>
+            <option value="vol">Vol</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" id="ex-notes" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss>Annuler</button>
+      <button class="btn btn-accent" id="btn-save-exit"><i class="bi bi-check-lg"></i> Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nouvel inventaire -->
+<div class="modal-backdrop" id="modal-inventory">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <span class="modal-title">
+        <i class="bi bi-clipboard2-plus" style="color:#4f46e5"></i> Nouvel inventaire
+      </span>
+      <button class="modal-close" data-dismiss><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nom de l'inventaire *</label>
+        <input class="form-control" id="inv-name" type="text" placeholder="Ex: Inventaire Juin 2026">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select class="form-control form-select" id="inv-type">
+          <option value="complet">Complet (tous les produits)</option>
+          <option value="partiel">Partiel (par catégorie)</option>
+        </select>
+      </div>
+      <div class="form-group hidden" id="inv-cat-group">
+        <label class="form-label">Catégorie</label>
+        <select class="form-control form-select" id="inv-cat"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss>Annuler</button>
+      <button class="btn btn-primary" id="btn-save-inventory"><i class="bi bi-check-lg"></i> Créer</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+requireAuth();
+
+let stockData = null;
+let products  = [];
+
+async function init() {
+  await loadProducts();
+  await loadStockTab();
+  loadEntriesTab();
+  loadExitsTab();
+  loadInventoriesTab();
+  bindEvents();
+}
+
+async function loadProducts() {
+  try {
+    products = await api.get('/products');
+    ['e-product','ex-product'].forEach(id => {
+      const sel = document.getElementById(id);
+      sel.innerHTML = '<option value="">— Choisir —</option>' +
+        products.filter(p => p.is_active).map(p =>
+          `<option value="${p.id}">${escHtml(p.name)} (stock: ${p.stock_quantity ?? 0} ${escHtml(p.unit)})</option>`
+        ).join('');
+    });
+    const cats = await api.get('/categories');
+    const invCat = document.getElementById('inv-cat');
+    invCat.innerHTML = cats.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+  } catch {}
+}
+
+async function loadStockTab() {
+  try {
+    stockData = await api.get('/stock/dashboard');
+    const all = [...stockData.rupture, ...stockData.bas, ...stockData.normal];
+
+    document.getElementById('stock-kpis').innerHTML = `
+      <div class="kpi-card primary">
+        <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
+        <div class="kpi-label">Valeur stock (achat)</div>
+        <div class="kpi-value">${fmt(stockData.totaux.valeur_achat)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon"><i class="bi bi-boxes" style="color:#4f46e5"></i></div>
+        <div class="kpi-label">${stockData.totaux.nb_produits} produits</div>
+        <div class="kpi-value">${stockData.normal.length} <small style="font-size:.9rem;opacity:.7">en stock</small></div>
+        <div class="kpi-sub">${stockData.bas.length} stock bas · ${stockData.rupture.length} rupture</div>
+      </div>
+      <div class="kpi-card ${stockData.rupture.length > 0 ? 'accent' : ''}">
+        <div class="kpi-icon"><i class="bi bi-${stockData.rupture.length > 0 ? 'exclamation-triangle-fill' : 'check-circle-fill'}"></i></div>
+        <div class="kpi-label">Alertes</div>
+        <div class="kpi-value">${stockData.rupture.length + stockData.bas.length}</div>
+      </div>`;
+
+    renderStockTable(all);
+
+    document.getElementById('stock-search').addEventListener('input', e => {
+      const q = e.target.value.toLowerCase();
+      renderStockTable(all.filter(p => p.name.toLowerCase().includes(q)));
+    });
+  } catch (err) { toast(err.message, 'danger'); }
+}
+
+function renderStockTable(rows) {
+  const badges = { normal: 'badge-success', bas: 'badge-warning', rupture: 'badge-danger' };
+  const labels = { normal: 'Normal', bas: 'Stock bas', rupture: 'Rupture' };
+  const dots   = { normal: 'dot-normal', bas: 'dot-bas', rupture: 'dot-rupture' };
+  renderTable('stock-tbody', rows.map(p => `
+    <tr>
+      <td><strong>${escHtml(p.name)}</strong></td>
+      <td>${escHtml(p.category ?? '—')}</td>
+      <td class="${p.quantity <= 0 ? 'text-danger font-bold' : ''}">
+        <strong>${p.quantity}</strong> ${escHtml(p.unit ?? '')}
+      </td>
+      <td>${p.min_stock_alert}</td>
+      <td>${fmt(p.valeur_stock)}</td>
+      <td>
+        <span class="badge ${badges[p.stock_status]}">
+          <span class="stock-status-dot ${dots[p.stock_status]}"></span>
+          ${labels[p.stock_status]}
+        </span>
+      </td>
+    </tr>`), 'Aucun produit');
+}
+
+async function loadEntriesTab() {
+  try {
+    const entries = await api.get('/stock/entries');
+    renderTable('entries-tbody', entries.map(e => `
+      <tr>
+        <td>${escHtml(e.date)}</td>
+        <td><strong>${escHtml(e.product)}</strong></td>
+        <td class="font-bold">${e.quantity} ${escHtml(e.unit ?? '')}</td>
+        <td>${fmt(e.purchase_price)}</td>
+        <td>${escHtml(e.supplier ?? '—')}</td>
+        <td>${escHtml(e.invoice_number ?? '—')}</td>
+        <td>${escHtml(e.received_by ?? '—')}</td>
+      </tr>`), 'Aucune entrée');
+  } catch (err) { toast(err.message, 'danger'); }
+}
+
+async function loadExitsTab() {
+  try {
+    const exits  = await api.get('/stock/exits');
+    const motifs = { casse:'Casse', peremption:'Péremption', usage_interne:'Usage interne', perte:'Perte', vol:'Vol', autre:'Autre' };
+    renderTable('exits-tbody', exits.map(e => `
+      <tr>
+        <td>${escHtml(e.date)}</td>
+        <td><strong>${escHtml(e.product)}</strong></td>
+        <td class="font-bold text-danger">${e.quantity} ${escHtml(e.unit ?? '')}</td>
+        <td><span class="badge badge-warning">${motifs[e.reason] ?? escHtml(e.reason)}</span></td>
+        <td>${escHtml(e.notes ?? '—')}</td>
+        <td>${escHtml(e.created_by ?? '—')}</td>
+      </tr>`), 'Aucune sortie');
+  } catch (err) { toast(err.message, 'danger'); }
+}
+
+async function loadInventoriesTab() {
+  try {
+    const invs = await api.get('/inventories');
+    const statusBadge = { en_cours: 'badge-warning', valide: 'badge-success' };
+    const statusLabel = { en_cours: 'En cours', valide: 'Validé' };
+    renderTable('inventories-tbody', invs.map(inv => `
+      <tr>
+        <td><strong>${escHtml(inv.name)}</strong></td>
+        <td>${inv.type === 'complet' ? 'Complet' : 'Partiel'}</td>
+        <td><span class="badge ${statusBadge[inv.status] ?? 'badge-neutral'}">${statusLabel[inv.status] ?? escHtml(inv.status)}</span></td>
+        <td>${inv.items_count} produit(s)</td>
+        <td>${escHtml(inv.created_at)}</td>
+        <td>${inv.validated_by ? escHtml(inv.validated_by) : '—'}</td>
+        <td>
+          ${inv.status === 'en_cours'
+            ? `<button class="btn btn-sm btn-primary" onclick="openInventoryCount(${inv.id})"><i class="bi bi-pencil-square"></i> Compter</button>`
+            : `<button class="btn btn-sm btn-outline" onclick="openInventoryDetail(${inv.id})"><i class="bi bi-eye"></i> Voir</button>`}
+        </td>
+      </tr>`), 'Aucun inventaire');
+  } catch (err) { toast(err.message, 'danger'); }
+}
+
+async function openInventoryCount(id)  { window.location.href = `inventory-count.html?id=${id}`; }
+async function openInventoryDetail(id) { window.location.href = `inventory-count.html?id=${id}`; }
+
+function bindEvents() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+    });
+  });
+
+  document.getElementById('btn-add-entry').addEventListener('click', () => openModal('modal-entry'));
+  document.getElementById('btn-save-entry').addEventListener('click', async () => {
+    const body = {
+      product_id:     Number(document.getElementById('e-product').value),
+      quantity:       Number(document.getElementById('e-qty').value),
+      purchase_price: Number(document.getElementById('e-price').value),
+      supplier:       document.getElementById('e-supplier').value,
+      invoice_number: document.getElementById('e-invoice').value,
+      expiry_date:    document.getElementById('e-expiry').value || null,
+      notes:          document.getElementById('e-notes').value,
+    };
+    if (!body.product_id || !body.quantity || !body.purchase_price) {
+      toast('Remplissez les champs obligatoires', 'warning'); return;
+    }
+    try {
+      const res = await api.post('/stock/entries', body);
+      closeModal('modal-entry');
+      toast(res.message ?? 'Réception enregistrée', 'success');
+      loadStockTab(); loadEntriesTab(); loadProducts();
+    } catch (err) { toast(err.message, 'danger'); }
+  });
+
+  document.getElementById('btn-add-exit').addEventListener('click', () => openModal('modal-exit'));
+  document.getElementById('btn-save-exit').addEventListener('click', async () => {
+    const body = {
+      product_id: Number(document.getElementById('ex-product').value),
+      quantity:   Number(document.getElementById('ex-qty').value),
+      reason:     document.getElementById('ex-reason').value,
+      notes:      document.getElementById('ex-notes').value,
+    };
+    if (!body.product_id || !body.quantity) {
+      toast('Remplissez les champs obligatoires', 'warning'); return;
+    }
+    try {
+      await api.post('/stock/exits', body);
+      closeModal('modal-exit');
+      toast('Sortie enregistrée', 'success');
+      loadStockTab(); loadExitsTab(); loadProducts();
+    } catch (err) { toast(err.message, 'danger'); }
+  });
+
+  document.getElementById('btn-add-inventory')?.addEventListener('click', () => openModal('modal-inventory'));
+  document.getElementById('inv-type').addEventListener('change', e => {
+    document.getElementById('inv-cat-group').classList.toggle('hidden', e.target.value !== 'partiel');
+  });
+  document.getElementById('btn-save-inventory').addEventListener('click', async () => {
+    const type = document.getElementById('inv-type').value;
+    const body = {
+      name:        document.getElementById('inv-name').value,
+      type,
+      category_id: type === 'partiel' ? Number(document.getElementById('inv-cat').value) : null,
+    };
+    if (!body.name) { toast('Entrez un nom d\'inventaire', 'warning'); return; }
+    try {
+      const res = await api.post('/inventories', body);
+      closeModal('modal-inventory');
+      toast(res.message ?? 'Inventaire créé', 'success');
+      loadInventoriesTab();
+      window.location.href = `inventory-count.html?id=${res.id ?? ''}`;
+    } catch (err) { toast(err.message, 'danger'); }
+  });
+}
+
+init();
+</script>
+</body>
+</html>

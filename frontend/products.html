@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Produits — Boutique D</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    .products-toolbar {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      align-items: center; margin-bottom: 0;
+    }
+    .products-toolbar .form-control { max-width: 200px; }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="sidebar-overlay"></div>
+<div class="layout">
+  <header class="topbar">
+    <button class="topbar-menu-btn" id="menu-btn"><i class="bi bi-list"></i></button>
+    <div class="topbar-brand">
+      <div class="brand-icon"><i class="bi bi-bag-fill"></i></div>
+      Boutique D
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-user" id="topbar-user"></div>
+    <button class="btn btn-ghost btn-sm" id="btn-logout">
+      <i class="bi bi-box-arrow-right"></i> Déconnexion
+    </button>
+  </header>
+
+  <nav class="sidebar">
+    <div class="sidebar-section">Principal</div>
+    <a href="dashboard.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="icon"><i class="bi bi-grid-1x2-fill"></i></span> Dashboard
+    </a>
+    <a href="pos.html" class="nav-item">
+      <span class="icon"><i class="bi bi-cash-register"></i></span> Caisse (POS)
+    </a>
+    <div class="sidebar-section" data-role="proprietaire,gestionnaire">Stock</div>
+    <a href="stock.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="icon"><i class="bi bi-boxes"></i></span> Stock
+      <span class="nav-badge hidden" id="alert-badge">0</span>
+    </a>
+    <a href="products.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="icon"><i class="bi bi-tag-fill"></i></span> Produits
+    </a>
+    <div class="sidebar-section" data-role="proprietaire">Gestion</div>
+    <a href="users.html" class="nav-item" data-role="proprietaire">
+      <span class="icon"><i class="bi bi-people-fill"></i></span> Utilisateurs
+    </a>
+    <a href="reports.html" class="nav-item" data-role="proprietaire">
+      <span class="icon"><i class="bi bi-bar-chart-fill"></i></span> Rapports
+    </a>
+  </nav>
+
+  <main class="main">
+    <div class="page-title">
+      <div class="page-icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">
+        <i class="bi bi-tag-fill"></i>
+      </div>
+      Produits &amp; Catégories
+    </div>
+
+    <!-- Catégories -->
+    <div class="card mb-6">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="bi bi-folder-fill" style="color:#f59e0b"></i> Catégories
+        </div>
+        <button class="btn btn-sm btn-primary" id="btn-add-cat" data-role="proprietaire">
+          <i class="bi bi-plus-lg"></i> Catégorie
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Description</th>
+              <th>Produits</th>
+              <th data-role="proprietaire"></th>
+            </tr>
+          </thead>
+          <tbody id="cats-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Produits -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="bi bi-tag-fill" style="color:#4f46e5"></i> Produits
+        </div>
+        <button class="btn btn-sm btn-primary" id="btn-add-product" data-role="proprietaire">
+          <i class="bi bi-plus-lg"></i> Produit
+        </button>
+      </div>
+      <div class="card-body" style="padding-bottom:0">
+        <div class="products-toolbar">
+          <div style="position:relative">
+            <i class="bi bi-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none"></i>
+            <input class="form-control" id="product-search" placeholder="Rechercher…" style="padding-left:34px;max-width:220px">
+          </div>
+          <select class="form-control form-select" id="product-cat-filter">
+            <option value="">Toutes catégories</option>
+          </select>
+          <select class="form-control form-select" id="product-status-filter">
+            <option value="">Tous statuts</option>
+            <option value="1">Actif</option>
+            <option value="0">Inactif</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap" style="margin-top:1px">
+        <table>
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Catégorie</th>
+              <th>Unité</th>
+              <th>Prix détail</th>
+              <th>Prix gros</th>
+              <th>Seuil alerte</th>
+              <th>Statut</th>
+              <th data-role="proprietaire"></th>
+            </tr>
+          </thead>
+          <tbody id="products-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal catégorie -->
+<div class="modal-backdrop" id="modal-cat">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <span class="modal-title" id="cat-modal-title">
+        <i class="bi bi-folder-plus" style="color:#f59e0b"></i> Nouvelle catégorie
+      </span>
+      <button class="modal-close" data-dismiss><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cat-id">
+      <div class="form-group">
+        <label class="form-label">Nom *</label>
+        <input class="form-control" id="cat-name" type="text" placeholder="Ex: Boissons">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-control" id="cat-desc" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss>Annuler</button>
+      <button class="btn btn-primary" id="btn-save-cat"><i class="bi bi-check-lg"></i> Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal produit -->
+<div class="modal-backdrop" id="modal-product">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="prod-modal-title">
+        <i class="bi bi-tag-fill" style="color:#4f46e5"></i> Nouveau produit
+      </span>
+      <button class="modal-close" data-dismiss><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="prod-id">
+      <div class="grid grid-2 gap-3">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Nom *</label>
+          <input class="form-control" id="prod-name" type="text" placeholder="Ex: Eau minérale 1.5L">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Catégorie *</label>
+          <select class="form-control form-select" id="prod-cat"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unité *</label>
+          <input class="form-control" id="prod-unit" type="text" placeholder="Ex: bouteille, kg…">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Code-barres</label>
+          <input class="form-control" id="prod-barcode" type="text" placeholder="Ex: 6191234567890">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Prix détail (FCFA) *</label>
+          <input class="form-control" id="prod-retail" type="number" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Prix achat (FCFA) *</label>
+          <input class="form-control" id="prod-purchase" type="number" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Prix gros (FCFA)</label>
+          <input class="form-control" id="prod-wholesale" type="number" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Qté min gros</label>
+          <input class="form-control" id="prod-min-gros" type="number" min="1" placeholder="Ex: 6">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Seuil alerte stock</label>
+          <input class="form-control" id="prod-min-stock" type="number" min="0" placeholder="Ex: 10">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date péremption</label>
+          <input class="form-control" id="prod-expiry" type="date">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Description</label>
+          <textarea class="form-control" id="prod-desc" rows="2"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss>Annuler</button>
+      <button class="btn btn-primary" id="btn-save-product"><i class="bi bi-check-lg"></i> Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+requireAuth();
+
+let categories = [];
+let products   = [];
+let isOwner    = hasRole('proprietaire');
+
+async function init() {
+  await loadCategories();
+  await loadProducts();
+  bindEvents();
+}
+
+async function loadCategories() {
+  try {
+    categories = await api.get('/categories');
+    const prodCatSel = document.getElementById('prod-cat');
+    const filterSel  = document.getElementById('product-cat-filter');
+    const catOpts    = categories.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+    prodCatSel.innerHTML = '<option value="">— Choisir —</option>' + catOpts;
+    filterSel.innerHTML  = '<option value="">Toutes catégories</option>' + catOpts;
+
+    renderTable('cats-tbody', categories.map(c => `
+      <tr>
+        <td><strong>${escHtml(c.name)}</strong></td>
+        <td>${escHtml(c.description ?? '—')}</td>
+        <td><span class="badge badge-neutral">${c.products_count ?? 0} produit(s)</span></td>
+        <td>${isOwner ? `
+          <button class="btn btn-sm btn-outline" onclick="editCat(${c.id})">
+            <i class="bi bi-pencil"></i> Modifier
+          </button>
+          <button class="btn btn-sm btn-danger" style="margin-left:6px" onclick="deleteCat(${c.id})">
+            <i class="bi bi-trash3"></i>
+          </button>` : ''}</td>
+      </tr>`), 'Aucune catégorie');
+  } catch (err) { toast(err.message, 'danger'); }
+}
+
+async function loadProducts(query = '') {
+  try {
+    const params = new URLSearchParams();
+    if (query) params.set('search', query);
+    const catId  = document.getElementById('product-cat-filter').value;
+    const status = document.getElementById('product-status-filter').value;
+    if (catId)        params.set('category_id', catId);
+    if (status !== '') params.set('is_active', status);
+
+    products = await api.get(`/products?${params}`);
+    renderTable('products-tbody', products.map(p => `
+      <tr>
+        <td>
+          <strong>${escHtml(p.name)}</strong>
+          ${p.barcode ? `<br><span class="text-muted font-sm"><i class="bi bi-upc-scan"></i> ${escHtml(p.barcode)}</span>` : ''}
+        </td>
+        <td>${escHtml(p.category?.name ?? '—')}</td>
+        <td>${escHtml(p.unit)}</td>
+        <td class="font-bold">${p.prices?.retail_price ? fmt(p.prices.retail_price) : '—'}</td>
+        <td>${p.prices?.wholesale_price ? fmt(p.prices.wholesale_price) : '—'}</td>
+        <td>${p.min_stock_alert}</td>
+        <td><span class="badge ${p.is_active ? 'badge-success' : 'badge-danger'}">${p.is_active ? 'Actif' : 'Inactif'}</span></td>
+        <td>${isOwner ? `
+          <button class="btn btn-sm btn-outline" onclick="editProduct(${p.id})">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm btn-ghost" style="margin-left:4px" onclick="toggleProduct(${p.id})">
+            ${p.is_active ? '<i class="bi bi-toggle-on"></i>' : '<i class="bi bi-toggle-off"></i>'}
+          </button>` : ''}</td>
+      </tr>`), 'Aucun produit');
+  } catch (err) { toast(err.message, 'danger'); }
+}
+
+function editCat(id) {
+  const cat = categories.find(c => c.id === id);
+  if (!cat) return;
+  document.getElementById('cat-id').value   = id;
+  document.getElementById('cat-name').value = cat.name;
+  document.getElementById('cat-desc').value = cat.description ?? '';
+  document.getElementById('cat-modal-title').innerHTML = '<i class="bi bi-folder2-open" style="color:#f59e0b"></i> Modifier catégorie';
+  openModal('modal-cat');
+}
+
+async function deleteCat(id) {
+  if (!confirm('Supprimer cette catégorie ?')) return;
+  try {
+    await api.delete(`/categories/${id}`);
+    toast('Catégorie supprimée', 'success');
+    loadCategories();
+  } catch (err) { toast(err.message, 'danger'); }
+}
+
+async function editProduct(id) {
+  const p = products.find(p => p.id === id);
+  if (!p) return;
+  document.getElementById('prod-id').value        = id;
+  document.getElementById('prod-name').value      = p.name;
+  document.getElementById('prod-cat').value       = p.category_id;
+  document.getElementById('prod-unit').value      = p.unit;
+  document.getElementById('prod-barcode').value   = p.barcode ?? '';
+  document.getElementById('prod-retail').value    = p.prices?.retail_price ?? '';
+  document.getElementById('prod-purchase').value  = p.prices?.purchase_price ?? '';
+  document.getElementById('prod-wholesale').value = p.prices?.wholesale_price ?? '';
+  document.getElementById('prod-min-gros').value  = p.prices?.wholesale_min_qty ?? '';
+  document.getElementById('prod-min-stock').value = p.min_stock_alert ?? '';
+  document.getElementById('prod-expiry').value    = p.expiry_date ?? '';
+  document.getElementById('prod-desc').value      = p.description ?? '';
+  document.getElementById('prod-modal-title').innerHTML = '<i class="bi bi-pencil-square" style="color:#4f46e5"></i> Modifier produit';
+  openModal('modal-product');
+}
+
+async function toggleProduct(id) {
+  try {
+    await api.patch(`/products/${id}/toggle-status`);
+    toast('Statut mis à jour', 'success');
+    loadProducts();
+  } catch (err) { toast(err.message, 'danger'); }
+}
+
+function bindEvents() {
+  let searchTimer;
+  document.getElementById('product-search').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => loadProducts(e.target.value), 300);
+  });
+  document.getElementById('product-cat-filter').addEventListener('change', () => loadProducts());
+  document.getElementById('product-status-filter').addEventListener('change', () => loadProducts());
+
+  document.getElementById('btn-add-cat')?.addEventListener('click', () => {
+    document.getElementById('cat-id').value   = '';
+    document.getElementById('cat-name').value = '';
+    document.getElementById('cat-desc').value = '';
+    document.getElementById('cat-modal-title').innerHTML = '<i class="bi bi-folder-plus" style="color:#f59e0b"></i> Nouvelle catégorie';
+    openModal('modal-cat');
+  });
+
+  document.getElementById('btn-save-cat').addEventListener('click', async () => {
+    const id   = document.getElementById('cat-id').value;
+    const body = { name: document.getElementById('cat-name').value, description: document.getElementById('cat-desc').value };
+    if (!body.name) { toast('Le nom est requis', 'warning'); return; }
+    try {
+      if (id) await api.put(`/categories/${id}`, body);
+      else    await api.post('/categories', body);
+      closeModal('modal-cat');
+      toast('Catégorie enregistrée', 'success');
+      loadCategories();
+    } catch (err) { toast(err.message, 'danger'); }
+  });
+
+  document.getElementById('btn-add-product')?.addEventListener('click', () => {
+    ['prod-id','prod-name','prod-barcode','prod-retail','prod-purchase','prod-wholesale','prod-min-gros','prod-min-stock','prod-expiry','prod-desc'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('prod-cat').value  = '';
+    document.getElementById('prod-unit').value = '';
+    document.getElementById('prod-modal-title').innerHTML = '<i class="bi bi-tag-fill" style="color:#4f46e5"></i> Nouveau produit';
+    openModal('modal-product');
+  });
+
+  document.getElementById('btn-save-product').addEventListener('click', async () => {
+    const id   = document.getElementById('prod-id').value;
+    const body = {
+      name:              document.getElementById('prod-name').value,
+      category_id:       Number(document.getElementById('prod-cat').value),
+      unit:              document.getElementById('prod-unit').value,
+      barcode:           document.getElementById('prod-barcode').value || null,
+      retail_price:      Number(document.getElementById('prod-retail').value),
+      purchase_price:    Number(document.getElementById('prod-purchase').value),
+      wholesale_price:   Number(document.getElementById('prod-wholesale').value) || null,
+      min_wholesale_qty: Number(document.getElementById('prod-min-gros').value) || null,
+      min_stock_alert:   Number(document.getElementById('prod-min-stock').value) || 5,
+      expiry_date:       document.getElementById('prod-expiry').value || null,
+      description:       document.getElementById('prod-desc').value || null,
+    };
+    if (!body.name || !body.category_id || !body.unit || !body.retail_price || !body.purchase_price) {
+      toast('Remplissez les champs obligatoires', 'warning'); return;
+    }
+    try {
+      if (id) await api.put(`/products/${id}`, body);
+      else    await api.post('/products', body);
+      closeModal('modal-product');
+      toast('Produit enregistré', 'success');
+      loadProducts();
+    } catch (err) { toast(err.message, 'danger'); }
+  });
+}
+
+init();
+</script>
+</body>
+</html>

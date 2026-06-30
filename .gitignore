@@ -1,0 +1,26 @@
+# Backend
+backend/.env
+backend/.env.*
+backend/vendor/
+backend/storage/logs/*.log
+backend/storage/*.key
+backend/public/storage
+backend/public/hot
+backend/node_modules/
+backend/.phpunit.cache
+backend/.phpunit.result.cache
+
+# Frontend
+frontend/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Session memory (internal tool)
+.remember/
