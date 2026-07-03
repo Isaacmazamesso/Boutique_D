@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -87,7 +87,7 @@
 
   <main class="main">
     <div class="page-title">
-      <div class="page-icon" style="background:linear-gradient(135deg,#10b981,#059669)">
+      <div class="page-icon" style="background:#059669">
         <i class="bi bi-boxes"></i>
       </div>
       Stock &amp; Inventaire
@@ -381,18 +381,18 @@ async function loadStockTab() {
 
     document.getElementById('stock-kpis').innerHTML = `
       <div class="kpi-card primary">
-        <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
+        <div class="kpi-icon"><i class="bi bi-cash-stack" style="color:var(--primary)"></i></div>
         <div class="kpi-label">Valeur stock (achat)</div>
         <div class="kpi-value">${fmt(stockData.totaux.valeur_achat)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-icon"><i class="bi bi-boxes" style="color:#4f46e5"></i></div>
+        <div class="kpi-icon"><i class="bi bi-boxes" style="color:var(--primary)"></i></div>
         <div class="kpi-label">${stockData.totaux.nb_produits} produits</div>
-        <div class="kpi-value">${stockData.normal.length} <small style="font-size:.9rem;opacity:.7">en stock</small></div>
+        <div class="kpi-value">${stockData.normal.length} <small style="font-size:.9rem;color:var(--text-muted)">en stock</small></div>
         <div class="kpi-sub">${stockData.bas.length} stock bas · ${stockData.rupture.length} rupture</div>
       </div>
-      <div class="kpi-card ${stockData.rupture.length > 0 ? 'accent' : ''}">
-        <div class="kpi-icon"><i class="bi bi-${stockData.rupture.length > 0 ? 'exclamation-triangle-fill' : 'check-circle-fill'}"></i></div>
+      <div class="kpi-card ${stockData.rupture.length > 0 ? 'danger' : ''}">
+        <div class="kpi-icon"><i class="bi bi-${stockData.rupture.length > 0 ? 'exclamation-triangle-fill' : 'check-circle-fill'}" style="color:${stockData.rupture.length > 0 ? 'var(--danger)' : 'var(--success)'}"></i></div>
         <div class="kpi-label">Alertes</div>
         <div class="kpi-value">${stockData.rupture.length + stockData.bas.length}</div>
       </div>`;
@@ -562,3 +562,4 @@ init();
 </script>
 </body>
 </html>
+

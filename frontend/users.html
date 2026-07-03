@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -56,7 +56,7 @@
 
   <main class="main">
     <div class="page-title">
-      <div class="page-icon" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">
+      <div class="page-icon" style="background:#4f46e5">
         <i class="bi bi-people-fill"></i>
       </div>
       Utilisateurs
@@ -190,7 +190,7 @@ async function loadUsers(query = '') {
       <tr>
         <td>
           <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.9rem;flex-shrink:0">
+            <div style="width:36px;height:36px;border-radius:10px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.9rem;flex-shrink:0">
               ${escHtml(u.name.charAt(0).toUpperCase())}
             </div>
             <strong>${escHtml(u.name)}</strong>
@@ -301,3 +301,4 @@ loadUsers();
 </script>
 </body>
 </html>
+
