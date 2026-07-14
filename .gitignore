@@ -24,3 +24,6 @@ Thumbs.db
 
 # Session memory (internal tool)
 .remember/
+
+# Brainstorming visual companion (internal tool)
+.superpowers/
