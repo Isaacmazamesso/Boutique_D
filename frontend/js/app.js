@@ -5,6 +5,11 @@ function escHtml(str) {
   return el.innerHTML;
 }
 
+// ── Lucide icons ──────────────────────────────────────────────────────────────
+function refreshIcons() {
+  if (window.lucide) window.lucide.createIcons();
+}
+
 // ── Auth guard ───────────────────────────────────────────────────────────────
 function requireAuth() {
   const token = localStorage.getItem('token');
@@ -72,6 +77,8 @@ function initLayout() {
 
   // Load alert count in sidebar badge
   refreshAlertBadge();
+
+  refreshIcons();
 }
 
 async function refreshAlertBadge() {
@@ -95,9 +102,9 @@ function logout() {
 // ── Toast notifications ───────────────────────────────────────────────────────
 function toast(msg, type = 'success', duration = 3500) {
   const icons = {
-    success: '<i class="bi bi-check-circle-fill"></i>',
-    danger:  '<i class="bi bi-x-circle-fill"></i>',
-    warning: '<i class="bi bi-exclamation-triangle-fill"></i>',
+    success: '<i data-lucide="circle-check-big" class="icon"></i>',
+    danger:  '<i data-lucide="circle-x" class="icon"></i>',
+    warning: '<i data-lucide="triangle-alert" class="icon"></i>',
   };
   const container = document.getElementById('toast-container');
   if (!container) return;
@@ -105,12 +112,13 @@ function toast(msg, type = 'success', duration = 3500) {
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   const iconSpan = document.createElement('span');
-  iconSpan.innerHTML = icons[type] || '<i class="bi bi-info-circle-fill"></i>';
+  iconSpan.innerHTML = icons[type] || '<i data-lucide="info" class="icon"></i>';
   const msgSpan = document.createElement('span');
   msgSpan.textContent = msg;
   t.appendChild(iconSpan);
   t.appendChild(msgSpan);
   container.appendChild(t);
+  refreshIcons();
 
   setTimeout(() => {
     t.style.opacity = '0';
@@ -159,9 +167,11 @@ function renderTable(tbodyId, rows, emptyMsg = 'Aucune donnée') {
   if (!rows || rows.length === 0) {
     const cols = tbody.closest('table')?.querySelectorAll('th').length || 4;
     tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-muted" style="padding:32px">${emptyMsg}</td></tr>`;
+    refreshIcons();
     return;
   }
   tbody.innerHTML = rows.join('');
+  refreshIcons();
 }
 
 // ── Confirm dialog ────────────────────────────────────────────────────────────
