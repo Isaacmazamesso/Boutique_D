@@ -40,10 +40,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('sales')->group(function () {
         Route::get('/', [SaleController::class, 'index']);
         Route::post('/', [SaleController::class, 'store']);
+        Route::post('pending', [SaleController::class, 'storePending']);
+        Route::get('pending', [SaleController::class, 'pending']);
         Route::get('receipt', [SaleController::class, 'findByReceipt']);
         Route::get('{sale}', [SaleController::class, 'show']);
         Route::get('{sale}/receipt-pdf', [SaleController::class, 'receiptPdf']);
         Route::post('{sale}/refund', [SaleController::class, 'refund']);
+        Route::post('{sale}/validate', [SaleController::class, 'validatePending']);
+        Route::post('{sale}/cancel-pending', [SaleController::class, 'cancelPending']);
     });
 
     // Dashboard — propriétaire uniquement
