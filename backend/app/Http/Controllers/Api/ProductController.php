@@ -189,7 +189,7 @@ class ProductController extends Controller
             $price = $product->price;
             if (!$price) continue;
 
-            $old = $price->$field;
+            $old = (int) $price->$field;
             $new = $type === 'percent'
                 ? (int) round($old * (1 + $value / 100))
                 : (int) round($old + $value);
