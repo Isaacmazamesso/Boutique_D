@@ -250,6 +250,43 @@ class ReportController extends Controller
 
     public function treasury(Request $request): JsonResponse
     {
+        return $this->success($this->computeTreasuryReport($request));
+    }
+
+    public function treasuryPdf(Request $request)
+    {
+        $data = $this->computeTreasuryReport($request);
+
+        return Pdf::loadView('reports.treasury', $data)
+            ->stream('rapport-tresorerie-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function treasuryExcel(Request $request)
+    {
+        $data = $this->computeTreasuryReport($request);
+
+        $rows = collect($data['sessions']['detail'])->map(fn($s) => [
+            'Caissier'       => $s['cashier'] ?? '—',
+            'Ouverture'      => $s['ouverture'],
+            'Fermeture'      => $s['fermeture'] ?? '—',
+            'Fonds départ'   => $s['fonds_depart'],
+            'Théorique'      => $s['theorique'] ?? '—',
+            'Saisi'          => $s['montant_saisi'] ?? '—',
+            'Écart'          => $s['ecart'] ?? '—',
+            'Statut'         => $s['statut'],
+        ]);
+
+        $response = (new FastExcel($rows))->download('rapport-tresorerie-' . now()->format('Y-m-d') . '.xlsx');
+        // FastExcel/OpenSpout set le Content-Type via header() natif au moment du stream,
+        // ce qui n'apparaît pas dans le header bag de la Response (invisible en test HTTP) :
+        // on le fixe explicitement (confirmé nécessaire en B2-T1, vendor/rap2hpoutre/fast-excel/src/Exportable.php:78-88).
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        return $response;
+    }
+
+    private function computeTreasuryReport(Request $request): array
+    {
         [$start, $end] = $this->resolvePeriod($request);
 
         $sales = Sale::whereBetween('created_at', [$start, $end])->get();
@@ -271,7 +308,7 @@ class ReportController extends Controller
             !is_null($s->difference) && abs($s->difference) > $seuilCaisse
         );
 
-        return $this->success([
+        return [
             'periode'       => ['debut' => $start->format('d/m/Y'), 'fin' => $end->format('d/m/Y')],
             'encaissements' => [
                 'especes'        => $especes,
@@ -295,9 +332,9 @@ class ReportController extends Controller
                     'statut'       => $s->isOpen() ? 'ouverte' : (
                         abs($s->difference ?? 0) > $seuilCaisse ? 'ecart' : 'ok'
                     ),
-                ]),
+                ])->toArray(),
             ],
-        ]);
+        ];
     }
 
     // ── Rapport performance employés ──────────────────────────────────────────

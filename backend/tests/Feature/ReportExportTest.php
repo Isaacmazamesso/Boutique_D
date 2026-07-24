@@ -116,4 +116,47 @@ class ReportExportTest extends TestCase
             $response->headers->get('content-type')
         );
     }
+
+    // ── Trésorerie ───────────────────────────────────────────────────────
+
+    public function test_le_rapport_tresorerie_json_est_inchange_apres_le_refactor(): void
+    {
+        $owner   = $this->makeUser('proprietaire');
+        $product = $this->makeProduct(retail: 500);
+        $this->makeSaleViaApi($owner, $product, qty: 2);
+
+        Sanctum::actingAs($owner);
+        $response = $this->getJson('/api/reports/treasury?period=today');
+
+        $response->assertOk();
+        $data = $response->json('data');
+        $this->assertSame(1000, $data['encaissements']['especes']);
+        $this->assertArrayHasKey('sessions', $data);
+    }
+
+    public function test_le_pdf_du_rapport_tresorerie_est_genere(): void
+    {
+        $owner = $this->makeUser('proprietaire');
+
+        Sanctum::actingAs($owner);
+        $response = $this->get('/api/reports/treasury/pdf?period=today');
+
+        $response->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('content-type'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_l_excel_du_rapport_tresorerie_est_genere(): void
+    {
+        $owner = $this->makeUser('proprietaire');
+
+        Sanctum::actingAs($owner);
+        $response = $this->get('/api/reports/treasury/excel?period=today');
+
+        $response->assertOk();
+        $this->assertSame(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            $response->headers->get('content-type')
+        );
+    }
 }
