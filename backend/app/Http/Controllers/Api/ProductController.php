@@ -9,6 +9,7 @@ use App\Models\ProductPrice;
 use App\Models\Stock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
@@ -161,6 +162,91 @@ class ProductController extends Controller
         $product->delete();
 
         return $this->success(null, 'Produit supprimé.');
+    }
+
+    public function bulkPriceUpdate(Request $request): JsonResponse
+    {
+        $request->validate([
+            'product_ids'      => 'required|array|min:1',
+            'product_ids.*'    => 'integer|exists:products,id',
+            'field'            => 'required|in:retail_price,wholesale_price',
+            'adjustment_type'  => 'required|in:percent,fixed',
+            'adjustment_value' => 'required|numeric',
+            'reason'           => 'nullable|string|max:255',
+        ]);
+
+        $field = $request->field;
+        $type  = $request->adjustment_type;
+        $value = (float) $request->adjustment_value;
+
+        $products = Product::whereIn('id', $request->product_ids)->with('price')->get();
+
+        // Calcul et validation de TOUS les nouveaux prix avant toute écriture (tout-ou-rien).
+        $computed = [];
+        $errors   = [];
+
+        foreach ($products as $product) {
+            $price = $product->price;
+            if (!$price) continue;
+
+            $old = (int) $price->$field;
+            $new = $type === 'percent'
+                ? (int) round($old * (1 + $value / 100))
+                : (int) round($old + $value);
+
+            if ($new < 0) {
+                $errors[] = "{$product->name} : nouveau prix négatif ({$new} FCFA).";
+                continue;
+            }
+
+            $computed[] = ['product' => $product, 'price' => $price, 'old' => $old, 'new' => $new];
+        }
+
+        if (!empty($errors)) {
+            return $this->error('Ajustement refusé : ' . implode(' ', $errors), 422);
+        }
+
+        $updated = [];
+
+        DB::transaction(function () use ($computed, $field, $request, &$updated) {
+            foreach ($computed as $entry) {
+                $product = $entry['product'];
+                $price   = $entry['price'];
+
+                if ($entry['old'] !== $entry['new']) {
+                    PriceHistory::create([
+                        'product_id'          => $product->id,
+                        'changed_by'          => $request->user()->id,
+                        'old_purchase_price'  => $price->purchase_price,
+                        'new_purchase_price'  => $price->purchase_price,
+                        'old_retail_price'    => $price->retail_price,
+                        'new_retail_price'    => $field === 'retail_price' ? $entry['new'] : $price->retail_price,
+                        'old_wholesale_price' => $price->wholesale_price,
+                        'new_wholesale_price' => $field === 'wholesale_price' ? $entry['new'] : $price->wholesale_price,
+                        'reason'              => $request->reason,
+                    ]);
+
+                    $price->update([$field => $entry['new']]);
+                }
+
+                $updated[] = [
+                    'id'   => $product->id,
+                    'name' => $product->name,
+                    'old'  => $entry['old'],
+                    'new'  => $entry['new'],
+                ];
+            }
+        });
+
+        activity_log($request->user()->id, 'modification_prix_masse', null, null, [
+            'nb_produits'      => count($updated),
+            'field'            => $field,
+            'adjustment_type'  => $type,
+            'adjustment_value' => $value,
+            'product_ids'      => array_column($updated, 'id'),
+        ]);
+
+        return $this->success($updated, count($updated) . ' produit(s) mis à jour.');
     }
 
     public function findByBarcode(Request $request): JsonResponse
