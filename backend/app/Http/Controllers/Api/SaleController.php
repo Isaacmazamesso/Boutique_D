@@ -10,6 +10,7 @@ use App\Models\RefundItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Setting;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -156,7 +157,7 @@ class SaleController extends Controller
         ]);
 
         return $this->success(
-            $this->formatSale($sale->load(['items.product', 'cashier:id,name'])),
+            $this->formatSale($sale->load(['items.product', 'cashier:id,name']), collect()),
             'Vente enregistrée.',
             201
         );
@@ -164,7 +165,7 @@ class SaleController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Sale::with(['cashier:id,name', 'items'])
+        $query = Sale::with(['cashier:id,name', 'items.product'])
             ->when(!$request->user()->hasRole(['proprietaire', 'gestionnaire']), fn($q) =>
                 $q->where('cashier_id', $request->user()->id)
             )
@@ -173,7 +174,16 @@ class SaleController extends Controller
             ->when($request->payment_method, fn($q) => $q->where('payment_method', $request->payment_method))
             ->latest();
 
-        $sales = $query->limit(100)->get()->map(fn($s) => $this->formatSale($s));
+        $sales = $query->limit(100)->get();
+
+        $refundedBySale = RefundItem::join('refunds', 'refunds.id', '=', 'refund_items.refund_id')
+            ->whereIn('refunds.sale_id', $sales->pluck('id'))
+            ->selectRaw('refunds.sale_id, refund_items.product_id, SUM(refund_items.quantity) as qty')
+            ->groupBy('refunds.sale_id', 'refund_items.product_id')
+            ->get()
+            ->groupBy('sale_id');
+
+        $sales = $sales->map(fn($s) => $this->formatSale($s, ($refundedBySale[$s->id] ?? collect())->pluck('qty', 'product_id')));
 
         return $this->success($sales);
     }
@@ -288,6 +298,15 @@ class SaleController extends Controller
         ], "Remboursement de {$refundAmount} FCFA effectué. Stock réintégré.");
     }
 
+    public function receiptPdf(Sale $sale)
+    {
+        $sale->load(['items.product', 'cashier:id,name', 'vendor:id,name']);
+
+        return Pdf::loadView('receipts.sale', ['sale' => $this->formatSale($sale)])
+            ->setPaper([0, 0, 226.77, 841.89]) // 80 mm de large
+            ->stream('recu-' . $sale->receipt_number . '.pdf');
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function generateReceiptNumber(): string
@@ -297,8 +316,13 @@ class SaleController extends Controller
         return 'VTE-' . $date . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
     }
 
-    private function formatSale(Sale $sale): array
+    private function formatSale(Sale $sale, ?\Illuminate\Support\Collection $refundedByProduct = null): array
     {
+        $refundedByProduct ??= RefundItem::whereHas('refund', fn($q) => $q->where('sale_id', $sale->id))
+            ->selectRaw('product_id, SUM(quantity) as qty')
+            ->groupBy('product_id')
+            ->pluck('qty', 'product_id');
+
         return [
             'id'             => $sale->id,
             'receipt_number' => $sale->receipt_number,
@@ -316,12 +340,13 @@ class SaleController extends Controller
             'date'           => $sale->created_at->format('d/m/Y H:i'),
             'items'          => $sale->relationLoaded('items')
                 ? $sale->items->map(fn($i) => [
-                    'id'         => $i->id,
-                    'product'    => $i->product?->name,
-                    'unit'       => $i->product?->unit,
-                    'quantity'   => $i->quantity,
-                    'unit_price' => $i->unit_price,
-                    'total'      => $i->total,
+                    'id'                => $i->id,
+                    'product'           => $i->product?->name,
+                    'unit'              => $i->product?->unit,
+                    'quantity'          => $i->quantity,
+                    'unit_price'        => $i->unit_price,
+                    'total'             => $i->total,
+                    'refunded_quantity' => (int) ($refundedByProduct[$i->product_id] ?? 0),
                 ])
                 : [],
         ];

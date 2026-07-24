@@ -4,7 +4,7 @@ const api = {
   _token: () => localStorage.getItem('token'),
 
   async _fetch(method, path, body = null, isForm = false) {
-    const headers = { Authorization: `Bearer ${this._token()}` };
+    const headers = { Authorization: `Bearer ${this._token()}`, Accept: 'application/json' };
     if (!isForm) headers['Content-Type'] = 'application/json';
 
     const opts = { method, headers };

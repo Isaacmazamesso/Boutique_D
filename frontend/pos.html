@@ -182,6 +182,19 @@
       .pos-right  { max-height: 50dvh; }
       .products-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
     }
+
+    @media print {
+      body * { visibility: hidden !important; }
+      .receipt, .receipt * { visibility: visible !important; }
+      .receipt { position: absolute; left: 0; top: 0; width: 80mm; box-shadow: none; border: none; }
+      .no-print { display: none !important; }
+      .modal-backdrop, .modal {
+        position: static !important;
+        transform: none !important;
+        max-height: none !important;
+        overflow: visible !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -241,6 +254,7 @@
         <button class="btn btn-sm btn-outline hidden" id="btn-close-session">
           <i data-lucide="lock" class="icon"></i> Fermer
         </button>
+        <button class="btn" id="btn-refund" onclick="openRefundModal()"><i data-lucide="rotate-ccw" class="icon"></i> Remboursement</button>
       </div>
     </div>
 
@@ -402,6 +416,39 @@
   </div>
 </div>
 
+<!-- Modal remboursement -->
+<div class="modal-backdrop" id="refund-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><i data-lucide="rotate-ccw" class="icon"></i> Remboursement</div>
+      <button class="modal-close" data-dismiss><i data-lucide="x" class="icon"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="flex gap-2">
+        <input type="text" class="form-control" id="refund-receipt-input" placeholder="N° de reçu (VTE-...)">
+        <button class="btn btn-primary" id="btn-refund-search"><i data-lucide="search" class="icon"></i></button>
+      </div>
+      <div id="refund-details" class="hidden">
+        <div id="refund-sale-info" class="font-sm text-muted"></div>
+        <div class="table-wrap mt-4">
+          <table>
+            <thead><tr><th>Article</th><th>Vendu</th><th>Remboursé</th><th>À rembourser</th></tr></thead>
+            <tbody id="refund-items-tbody"></tbody>
+          </table>
+        </div>
+        <div class="form-group mt-4">
+          <label class="form-label" for="refund-reason">Motif *</label>
+          <input type="text" class="form-control" id="refund-reason" maxlength="255" placeholder="Ex : produit défectueux">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" data-dismiss>Annuler</button>
+      <button class="btn btn-danger" id="btn-refund-submit" disabled><i data-lucide="rotate-ccw" class="icon"></i> Rembourser</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script>
@@ -411,6 +458,7 @@ let allProducts = [];
 let cart = [];
 let discount = { type: null, value: 0 };
 let session = null;
+let refundSale = null;
 
 async function init() {
   await Promise.all([loadSession(), loadProducts(), loadCategories()]);
@@ -702,8 +750,9 @@ function showReceipt(sale) {
   document.getElementById('payment-body').innerHTML = `
     <div class="receipt">
       <h3><i data-lucide="shopping-bag" class="icon"></i> Boutique D</h3>
-      <div class="receipt-sub">${escHtml(sale.created_at ?? '')}</div>
+      <div class="receipt-sub">${escHtml(sale.date ?? '')}</div>
       <div class="receipt-sub">${escHtml(sale.receipt_number ?? '')}</div>
+      <div class="receipt-sub">Caissier : ${escHtml(sale.cashier ?? '—')}</div>
       <hr>
       ${lines}
       <hr>
@@ -715,6 +764,10 @@ function showReceipt(sale) {
       ${sale.amount_paid ? `<div class="receipt-row"><span>Reçu</span><span>${fmt(sale.amount_paid)}</span></div>` : ''}
       ${sale.change_given > 0 ? `<div class="receipt-row"><span>Monnaie rendue</span><span>${fmt(sale.change_given)}</span></div>` : ''}
       <div class="receipt-footer">Merci pour votre achat !</div>
+    </div>
+    <div class="flex gap-2 mt-4 no-print">
+      <button class="btn w-full" onclick="window.print()"><i data-lucide="printer" class="icon"></i> Imprimer</button>
+      <button class="btn w-full" onclick="openReceiptPdf(${Number(sale.id)})"><i data-lucide="file-down" class="icon"></i> PDF</button>
     </div>`;
   document.getElementById('payment-footer').innerHTML = `
     <button class="btn btn-primary btn-block" data-dismiss>
@@ -723,6 +776,76 @@ function showReceipt(sale) {
   openModal('modal-payment');
   refreshIcons();
   toast('Vente enregistrée avec succès !', 'success');
+}
+
+async function openReceiptPdf(saleId) {
+  try {
+    const res = await fetch(`${API_BASE}/sales/${saleId}/receipt-pdf`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, Accept: 'application/pdf' },
+    });
+    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    window.open(URL.createObjectURL(await res.blob()), '_blank');
+  } catch (err) {
+    toast(err.message, 'danger');
+  }
+}
+
+function openRefundModal() {
+  refundSale = null;
+  document.getElementById('refund-receipt-input').value = '';
+  document.getElementById('refund-reason').value = '';
+  document.getElementById('refund-details').classList.add('hidden');
+  document.getElementById('btn-refund-submit').disabled = true;
+  openModal('refund-modal');
+}
+
+async function searchRefundSale() {
+  const num = document.getElementById('refund-receipt-input').value.trim();
+  if (!num) return;
+  try {
+    refundSale = await api.get(`/sales/receipt?receipt_number=${encodeURIComponent(num)}`);
+    document.getElementById('refund-sale-info').textContent =
+      `${refundSale.receipt_number} — ${refundSale.date} — ${refundSale.cashier ?? '—'} — Total ${fmt(refundSale.total)}`;
+    document.getElementById('refund-items-tbody').innerHTML = refundSale.items.map(i => {
+      const restant = i.quantity - (i.refunded_quantity ?? 0);
+      return `<tr>
+        <td>${escHtml(i.product ?? '—')}</td>
+        <td>${i.quantity}</td>
+        <td>${i.refunded_quantity ?? 0}</td>
+        <td>${restant > 0
+          ? `<input type="number" class="form-control refund-qty" data-item-id="${i.id}" min="0" max="${restant}" value="0" style="width:80px">`
+          : '<span class="badge badge-neutral">Épuisé</span>'}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('refund-details').classList.remove('hidden');
+    document.getElementById('btn-refund-submit').disabled = false;
+    refreshIcons();
+  } catch (err) {
+    toast(err.message, 'danger');
+  }
+}
+
+async function submitRefund() {
+  if (!refundSale) return;
+  const items = [...document.querySelectorAll('.refund-qty')]
+    .map(inp => ({ sale_item_id: Number(inp.dataset.itemId), quantity: Number(inp.value) }))
+    .filter(i => i.quantity > 0);
+  const reason = document.getElementById('refund-reason').value.trim();
+  if (items.length === 0) { toast('Saisissez au moins une quantité à rembourser.', 'warning'); return; }
+  if (!reason) { toast('Le motif est obligatoire.', 'warning'); return; }
+
+  const btn = document.getElementById('btn-refund-submit');
+  btn.disabled = true;
+  try {
+    const result = await api.post(`/sales/${refundSale.id}/refund`, { items, reason });
+    toast(`Remboursement de ${fmt(result.amount)} effectué. Stock réintégré.`, 'success');
+    await searchRefundSale(); // rafraîchit les quantités remboursées
+    loadProducts();           // rafraîchit le stock affiché dans la grille
+  } catch (err) {
+    toast(err.message, 'danger');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function bindEvents() {
@@ -792,6 +915,10 @@ function bindEvents() {
     } catch (err) { toast(err.message, 'danger'); }
   });
 }
+
+document.getElementById('btn-refund-search').addEventListener('click', searchRefundSale);
+document.getElementById('refund-receipt-input').addEventListener('keydown', e => { if (e.key === 'Enter') searchRefundSale(); });
+document.getElementById('btn-refund-submit').addEventListener('click', submitRefund);
 
 init();
 </script>
