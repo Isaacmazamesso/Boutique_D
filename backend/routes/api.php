@@ -108,6 +108,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('{product}', [ProductController::class, 'update']);
         Route::patch('{product}/toggle-status', [ProductController::class, 'toggleStatus']);
         Route::delete('{product}', [ProductController::class, 'destroy']);
+        Route::post('bulk-price-update', [ProductController::class, 'bulkPriceUpdate']);
     });
 
     // Gestion des utilisateurs — propriétaire uniquement
