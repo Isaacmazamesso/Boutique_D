@@ -53,6 +53,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('sales/pdf', [ReportController::class, 'salesPdf']);
             Route::get('sales/excel', [ReportController::class, 'salesExcel']);
             Route::get('stock', [ReportController::class, 'stock']);
+            Route::get('stock/pdf', [ReportController::class, 'stockPdf']);
+            Route::get('stock/excel', [ReportController::class, 'stockExcel']);
             Route::get('treasury', [ReportController::class, 'treasury']);
             Route::get('employees', [ReportController::class, 'employees']);
         });

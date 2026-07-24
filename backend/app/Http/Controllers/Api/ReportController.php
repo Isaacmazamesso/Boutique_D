@@ -130,6 +130,50 @@ class ReportController extends Controller
 
     public function stock(Request $request): JsonResponse
     {
+        return $this->success($this->computeStockReport($request));
+    }
+
+    public function stockPdf(Request $request)
+    {
+        $data = $this->computeStockReport($request);
+
+        return Pdf::loadView('reports.stock', $data)
+            ->stream('rapport-stock-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function stockExcel(Request $request)
+    {
+        $data = $this->computeStockReport($request);
+
+        $entrees = collect($data['mouvements']['entrees'])->map(fn($e) => [
+            'Date'        => $e['date'],
+            'Produit'     => $e['product'],
+            'Quantité'    => $e['quantity'],
+            'Prix achat'  => $e['prix'],
+            'Fournisseur' => $e['fournisseur'] ?? '—',
+        ]);
+
+        $alertes = collect(array_merge(
+            array_map(fn($p) => ['Produit' => $p['name'], 'Catégorie' => $p['category'] ?? '—', 'Statut' => 'Rupture', 'Quantité' => 0, 'Seuil' => '—'], $data['alertes']['rupture']),
+            array_map(fn($p) => ['Produit' => $p['name'], 'Catégorie' => $p['category'] ?? '—', 'Statut' => 'Stock bas', 'Quantité' => $p['quantity'], 'Seuil' => $p['seuil']], $data['alertes']['stock_bas'])
+        ));
+
+        $sheets = new \Rap2hpoutre\FastExcel\SheetCollection([
+            'Entrées' => $entrees,
+            'Alertes' => $alertes,
+        ]);
+
+        $response = (new FastExcel($sheets))->download('rapport-stock-' . now()->format('Y-m-d') . '.xlsx');
+        // FastExcel/OpenSpout set le Content-Type via header() natif au moment du stream,
+        // ce qui n'apparaît pas dans le header bag de la Response (invisible en test HTTP) :
+        // on le fixe explicitement (confirmé nécessaire en B2-T1, vendor/rap2hpoutre/fast-excel/src/Exportable.php:78-88).
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        return $response;
+    }
+
+    private function computeStockReport(Request $request): array
+    {
         $request->validate([
             'start_date' => 'nullable|date',
             'end_date'   => 'nullable|date|after_or_equal:start_date',
@@ -138,7 +182,6 @@ class ReportController extends Controller
         $start = $request->start_date ? now()->parse($request->start_date)->startOfDay() : today()->startOfMonth();
         $end   = $request->end_date   ? now()->parse($request->end_date)->endOfDay()     : now();
 
-        // Valeur du stock actuel
         $produits = Product::with(['price', 'stock', 'category'])
             ->where('is_active', true)
             ->get();
@@ -152,7 +195,6 @@ class ReportController extends Controller
             $valeurVente += $qty * ($p->price?->retail_price ?? 0);
         }
 
-        // Mouvements sur la période
         $entrees = StockEntry::whereBetween('created_at', [$start, $end])
             ->with('product:id,name')
             ->get();
@@ -161,11 +203,10 @@ class ReportController extends Controller
             ->with('product:id,name')
             ->get();
 
-        // Produits en rupture ou stock bas
         $rupture  = $produits->filter(fn($p) => $p->stockStatus() === 'rupture')->values();
         $stockBas = $produits->filter(fn($p) => $p->stockStatus() === 'bas')->values();
 
-        return $this->success([
+        return [
             'valeur_stock' => [
                 'achat'        => $valeurAchat,
                 'vente'        => $valeurVente,
@@ -186,23 +227,23 @@ class ReportController extends Controller
                     'quantity' => $e->quantity,
                     'prix'     => $e->purchase_price,
                     'fournisseur' => $e->supplier,
-                ]),
+                ])->toArray(),
                 'sorties_par_motif' => $sorties->groupBy('reason')->map(fn($g, $r) => [
                     'motif'    => $r,
                     'count'    => $g->count(),
                     'quantite' => $g->sum('quantity'),
-                ]),
+                ])->toArray(),
             ],
             'alertes' => [
-                'rupture'   => $rupture->map(fn($p) => ['name' => $p->name, 'category' => $p->category?->name]),
+                'rupture'   => $rupture->map(fn($p) => ['name' => $p->name, 'category' => $p->category?->name])->toArray(),
                 'stock_bas' => $stockBas->map(fn($p) => [
                     'name'     => $p->name,
                     'category' => $p->category?->name,
                     'quantity' => $p->stock?->quantity,
                     'seuil'    => $p->min_stock_alert,
-                ]),
+                ])->toArray(),
             ],
-        ]);
+        ];
     }
 
     // ── Rapport trésorerie ────────────────────────────────────────────────────

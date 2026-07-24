@@ -69,4 +69,51 @@ class ReportExportTest extends TestCase
             $response->headers->get('content-type')
         );
     }
+
+    // ── Stock ────────────────────────────────────────────────────────────
+
+    public function test_le_rapport_stock_json_est_inchange_apres_le_refactor(): void
+    {
+        $owner   = $this->makeUser('proprietaire');
+        $this->makeProduct(retail: 500, purchase: 300, stockQty: 20);
+
+        Sanctum::actingAs($owner);
+        $response = $this->getJson('/api/reports/stock');
+
+        $response->assertOk();
+        $data = $response->json('data');
+        $this->assertArrayHasKey('valeur_stock', $data);
+        $this->assertArrayHasKey('mouvements', $data);
+        $this->assertArrayHasKey('alertes', $data);
+        $this->assertSame(1, $data['valeur_stock']['nb_produits']);
+        $this->assertSame(6000, $data['valeur_stock']['achat']); // 20 x 300
+    }
+
+    public function test_le_pdf_du_rapport_stock_est_genere(): void
+    {
+        $owner = $this->makeUser('proprietaire');
+        $this->makeProduct();
+
+        Sanctum::actingAs($owner);
+        $response = $this->get('/api/reports/stock/pdf');
+
+        $response->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('content-type'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_l_excel_du_rapport_stock_a_deux_feuilles(): void
+    {
+        $owner = $this->makeUser('proprietaire');
+        $this->makeProduct();
+
+        Sanctum::actingAs($owner);
+        $response = $this->get('/api/reports/stock/excel');
+
+        $response->assertOk();
+        $this->assertSame(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            $response->headers->get('content-type')
+        );
+    }
 }
