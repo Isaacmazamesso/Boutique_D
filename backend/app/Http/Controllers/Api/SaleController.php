@@ -10,6 +10,7 @@ use App\Models\RefundItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Setting;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -286,6 +287,15 @@ class SaleController extends Controller
             'amount'        => $refundAmount,
             'sale_receipt'  => $sale->receipt_number,
         ], "Remboursement de {$refundAmount} FCFA effectué. Stock réintégré.");
+    }
+
+    public function receiptPdf(Sale $sale)
+    {
+        $sale->load(['items.product', 'cashier:id,name']);
+
+        return Pdf::loadView('receipts.sale', ['sale' => $this->formatSale($sale)])
+            ->setPaper([0, 0, 226.77, 841.89]) // 80 mm de large
+            ->stream('recu-' . $sale->receipt_number . '.pdf');
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

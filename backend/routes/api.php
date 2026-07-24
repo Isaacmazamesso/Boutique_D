@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [SaleController::class, 'store']);
         Route::get('receipt', [SaleController::class, 'findByReceipt']);
         Route::get('{sale}', [SaleController::class, 'show']);
+        Route::get('{sale}/receipt-pdf', [SaleController::class, 'receiptPdf']);
         Route::post('{sale}/refund', [SaleController::class, 'refund']);
     });
 
