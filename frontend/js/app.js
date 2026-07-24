@@ -5,6 +5,50 @@ function escHtml(str) {
   return el.innerHTML;
 }
 
+// ── Lucide icons ──────────────────────────────────────────────────────────────
+function refreshIcons() {
+  if (window.lucide) window.lucide.createIcons();
+}
+
+// ── Skeleton loader pour tableaux ────────────────────────────────────────────
+function showTableSkeleton(tbodyId, rows = 4) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const cols = tbody.closest('table')?.querySelectorAll('th').length || 4;
+  const widths = ['70%', '45%', '85%', '55%', '65%', '40%'];
+  let html = '';
+  for (let r = 0; r < rows; r++) {
+    html += '<tr class="skeleton-row">';
+    for (let c = 0; c < cols; c++) {
+      html += `<td><div class="skeleton-line" style="width:${widths[(r + c) % widths.length]}"></div></td>`;
+    }
+    html += '</tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+// ── Sparkline SVG ────────────────────────────────────────────────────────────
+function sparklineSvg(values, opts = {}) {
+  if (!Array.isArray(values) || values.length < 2) return '';
+  const w = opts.width ?? 140, h = opts.height ?? 38, stroke = opts.stroke ?? 'var(--accent)';
+  const max = Math.max(...values), min = Math.min(...values);
+  const range = max - min || 1;
+  const pts = values.map((v, i) => [
+    (i / (values.length - 1)) * w,
+    h - 3 - ((v - min) / range) * (h - 6),
+  ]);
+  const line = pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const area = `0,${h} ${line} ${w},${h}`;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <defs><linearGradient id="sparkfill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2563EB" stop-opacity=".18"/>
+      <stop offset="100%" stop-color="#2563EB" stop-opacity="0"/>
+    </linearGradient></defs>
+    <polygon points="${area}" fill="url(#sparkfill)"/>
+    <polyline points="${line}" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
 // ── Auth guard ───────────────────────────────────────────────────────────────
 function requireAuth() {
   const token = localStorage.getItem('token');
@@ -72,6 +116,8 @@ function initLayout() {
 
   // Load alert count in sidebar badge
   refreshAlertBadge();
+
+  refreshIcons();
 }
 
 async function refreshAlertBadge() {
@@ -95,9 +141,9 @@ function logout() {
 // ── Toast notifications ───────────────────────────────────────────────────────
 function toast(msg, type = 'success', duration = 3500) {
   const icons = {
-    success: '<i class="bi bi-check-circle-fill"></i>',
-    danger:  '<i class="bi bi-x-circle-fill"></i>',
-    warning: '<i class="bi bi-exclamation-triangle-fill"></i>',
+    success: '<i data-lucide="circle-check-big" class="icon"></i>',
+    danger:  '<i data-lucide="circle-x" class="icon"></i>',
+    warning: '<i data-lucide="triangle-alert" class="icon"></i>',
   };
   const container = document.getElementById('toast-container');
   if (!container) return;
@@ -105,12 +151,13 @@ function toast(msg, type = 'success', duration = 3500) {
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   const iconSpan = document.createElement('span');
-  iconSpan.innerHTML = icons[type] || '<i class="bi bi-info-circle-fill"></i>';
+  iconSpan.innerHTML = icons[type] || '<i data-lucide="info" class="icon"></i>';
   const msgSpan = document.createElement('span');
   msgSpan.textContent = msg;
   t.appendChild(iconSpan);
   t.appendChild(msgSpan);
   container.appendChild(t);
+  refreshIcons();
 
   setTimeout(() => {
     t.style.opacity = '0';
@@ -153,15 +200,22 @@ function fmtDate(str) {
 }
 
 // ── Generic table renderer ────────────────────────────────────────────────────
-function renderTable(tbodyId, rows, emptyMsg = 'Aucune donnée') {
+function renderTable(tbodyId, rows, emptyMsg = 'Aucune donnée', emptyIcon = 'inbox') {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
   if (!rows || rows.length === 0) {
     const cols = tbody.closest('table')?.querySelectorAll('th').length || 4;
-    tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-muted" style="padding:32px">${emptyMsg}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${cols}" style="padding:0">
+      <div class="empty-state">
+        <div class="icon-wrap"><i data-lucide="${emptyIcon}" class="icon"></i></div>
+        <h4>${emptyMsg}</h4>
+      </div>
+    </td></tr>`;
+    refreshIcons();
     return;
   }
   tbody.innerHTML = rows.join('');
+  refreshIcons();
 }
 
 // ── Confirm dialog ────────────────────────────────────────────────────────────

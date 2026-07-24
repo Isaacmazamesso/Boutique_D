@@ -119,7 +119,7 @@ Usage dans le markup : `<i class="bi bi-check-lg"></i>` devient `<i data-lucide=
 - Modify: `frontend/css/app.css` (réécriture complète du fichier)
 
 **Interfaces:**
-- Produces: tous les sélecteurs CSS déjà consommés par les 8 pages (`.layout`, `.topbar`, `.sidebar`, `.nav-item`, `.nav-item.active`, `.nav-badge`, `.main`, `.page-title`, `.page-icon`, `.card`, `.card-header`, `.card-title`, `.card-body`, `.kpi-grid`, `.kpi-card` + modifiers `primary/accent/success/danger`, `.btn` + modifiers `primary/accent/danger/outline/ghost/sm/lg/block`, `.form-group`, `.form-label`, `.form-control`, `.form-select`, `.form-hint`, `.form-error`, `table/th/td`, `.badge` + modifiers `success/danger/warning/neutral/accent`, `.modal-backdrop`, `.modal`, `.modal-header/-title/-close/-body/-footer`, `.alert` + modifiers, `#toast-container`, `.toast` + modifiers, `.empty-state`, `.loading-spinner`, `.skeleton`, utilitaires `.grid/.grid-2/.grid-3/.flex/.items-center/.justify-between/.gap-*/.mb-*/.text-*/.font-*/.hidden`), plus une nouvelle classe `.icon` (dimensionnement des icônes Lucide) et `.nav-icon-wrap` (wrapper d'icône de nav).
+- Produces: tous les sélecteurs CSS déjà consommés par les 8 pages (`.layout`, `.topbar`, `.sidebar`, `.nav-item`, `.nav-item.active`, `.nav-badge`, `.main`, `.page-title`, `.page-icon`, `.card`, `.card-header`, `.card-title`, `.card-body`, `.kpi-grid`, `.kpi-card` + modifiers `primary/accent/success/danger`, `.btn` + modifiers `primary/accent/danger/outline/ghost/sm/lg/block`, `.form-group`, `.form-label`, `.form-control`, `.form-select`, `.form-hint`, `.form-error`, `table/th/td`, `.badge` + modifiers `success/danger/warning/neutral/accent`, `.modal-backdrop`, `.modal`, `.modal-header/-title/-close/-body/-footer`, `.alert` + modifiers, `#toast-container`, `.toast` + modifiers, `.empty-state`, `.loading-spinner`, `.skeleton`, utilitaires `.grid/.grid-2/.grid-3/.flex/.items-center/.justify-between/.gap-*/.mb-*/.text-*/.font-*/.hidden`), plus trois nouvelles classes : `.icon` (dimensionnement des icônes Lucide), `.nav-icon-wrap` (wrapper d'icône de nav), et `.nav-label` (texte du lien de nav, masqué sous 900px pour obtenir le rail d'icônes — voir Task 3).
 - Consumes: rien (fichier autonome).
 
 - [ ] **Step 1: Remplacer le contenu de `frontend/css/app.css`**
@@ -703,28 +703,15 @@ tr:hover td { background: var(--border-soft); }
   .grid-3 { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; }
-  .topbar-menu-btn { display: flex; }
-  .sidebar {
-    position: fixed;
-    top: var(--nav-h);
-    left: 0;
-    height: calc(100dvh - var(--nav-h));
-    z-index: 200;
-    width: var(--sidebar-w);
-    transform: translateX(-100%);
-    transition: transform .22s cubic-bezier(.4,0,.2,1);
-  }
-  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(15,23,42,.12); }
-  .sidebar-overlay {
-    position: fixed;
-    inset: 0;
-    top: var(--nav-h);
-    background: rgba(15,23,42,.25);
-    z-index: 199;
-    display: none;
-  }
-  .sidebar-overlay.show { display: block; }
+  .layout { grid-template-columns: 68px 1fr; }
+  .topbar-menu-btn { display: none; }
+  .sidebar { width: 68px; padding: 18px 8px; }
+  .sidebar-section { display: none; }
+  .nav-item { justify-content: center; padding: 8px; }
+  .nav-item .nav-label { display: none; }
+  .nav-item.active::before { left: -8px; }
+  .nav-badge { position: absolute; top: 2px; right: 2px; margin-left: 0; }
+  .sidebar-overlay { display: none !important; }
   .main { padding: 16px; height: calc(100dvh - var(--nav-h)); }
   .grid-2 { grid-template-columns: 1fr; }
   .modal { max-width: 100%; max-height: 95dvh; border-radius: var(--radius); }
@@ -882,34 +869,36 @@ Les `href` couvrent la navigation réelle (pas de changement JS requis : `initLa
   <nav class="sidebar">
     <div class="sidebar-section">Principal</div>
     <a href="dashboard.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="nav-icon-wrap"><i data-lucide="layout-grid" class="icon"></i></span> Dashboard
+      <span class="nav-icon-wrap"><i data-lucide="layout-grid" class="icon"></i></span> <span class="nav-label">Dashboard</span>
     </a>
     <a href="pos.html" class="nav-item">
-      <span class="nav-icon-wrap"><i data-lucide="store" class="icon"></i></span> Caisse (POS)
+      <span class="nav-icon-wrap"><i data-lucide="store" class="icon"></i></span> <span class="nav-label">Caisse (POS)</span>
     </a>
     <div class="sidebar-section" data-role="proprietaire,gestionnaire">Stock</div>
     <a href="stock.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="nav-icon-wrap"><i data-lucide="boxes" class="icon"></i></span> Stock
+      <span class="nav-icon-wrap"><i data-lucide="boxes" class="icon"></i></span> <span class="nav-label">Stock</span>
       <span class="nav-badge hidden" id="alert-badge">0</span>
     </a>
     <a href="products.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="nav-icon-wrap"><i data-lucide="tag" class="icon"></i></span> Produits
+      <span class="nav-icon-wrap"><i data-lucide="tag" class="icon"></i></span> <span class="nav-label">Produits</span>
     </a>
     <div class="sidebar-section" data-role="proprietaire">Gestion</div>
     <a href="users.html" class="nav-item" data-role="proprietaire">
-      <span class="nav-icon-wrap"><i data-lucide="users" class="icon"></i></span> Utilisateurs
+      <span class="nav-icon-wrap"><i data-lucide="users" class="icon"></i></span> <span class="nav-label">Utilisateurs</span>
     </a>
     <a href="reports.html" class="nav-item" data-role="proprietaire">
-      <span class="nav-icon-wrap"><i data-lucide="chart-column" class="icon"></i></span> Rapports
+      <span class="nav-icon-wrap"><i data-lucide="chart-column" class="icon"></i></span> <span class="nav-label">Rapports</span>
     </a>
     <div class="sidebar-section">Compte</div>
     <a href="profile.html" class="nav-item">
-      <span class="nav-icon-wrap"><i data-lucide="user" class="icon"></i></span> Profil
+      <span class="nav-icon-wrap"><i data-lucide="user" class="icon"></i></span> <span class="nav-label">Profil</span>
     </a>
   </nav>
 ```
 
 Note : `reports.html`, `users.html`, `pos.html` actuels n'ont pas de `data-role` sur certains `<a>` (ex. `reports.html` et `users.html` n'en avaient aucun) — le bloc canonique les uniformise en réappliquant les mêmes règles de rôle que `dashboard.html`/`products.html`/`stock.html` (cohérence demandée par le client). C'est un changement de comportement mineur et voulu : un `caissier` ou `vendeur` ne verra plus ces liens dans la sidebar (ils étaient déjà inaccessibles côté API pour ces rôles — `role:proprietaire` — donc ça corrige une incohérence UI existante, pas une régression).
+
+**Rail d'icônes < 900px** : le texte de chaque lien de nav est enveloppé dans `<span class="nav-label">…</span>` (et non laissé en texte brut) précisément pour que la règle CSS `.nav-item .nav-label { display:none }` (Task 1, media query `max-width:900px`) puisse le masquer et transformer la sidebar en rail de 68px sous ce seuil — conforme à la maquette V2 validée. Ne pas laisser le texte hors `<span>` dans les pages, sinon le rail d'icônes ne fonctionnera pas.
 
 **Fermeture du layout** : chaque page garde son `</div>` de fermeture de `.layout` existant après son `<main>` (inchangé).
 
@@ -1890,29 +1879,29 @@ Lire `backend/app/Http/Controllers/Api/AuthController.php`, méthode `changePass
   <nav class="sidebar">
     <div class="sidebar-section">Principal</div>
     <a href="dashboard.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="nav-icon-wrap"><i data-lucide="layout-grid" class="icon"></i></span> Dashboard
+      <span class="nav-icon-wrap"><i data-lucide="layout-grid" class="icon"></i></span> <span class="nav-label">Dashboard</span>
     </a>
     <a href="pos.html" class="nav-item">
-      <span class="nav-icon-wrap"><i data-lucide="store" class="icon"></i></span> Caisse (POS)
+      <span class="nav-icon-wrap"><i data-lucide="store" class="icon"></i></span> <span class="nav-label">Caisse (POS)</span>
     </a>
     <div class="sidebar-section" data-role="proprietaire,gestionnaire">Stock</div>
     <a href="stock.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="nav-icon-wrap"><i data-lucide="boxes" class="icon"></i></span> Stock
+      <span class="nav-icon-wrap"><i data-lucide="boxes" class="icon"></i></span> <span class="nav-label">Stock</span>
       <span class="nav-badge hidden" id="alert-badge">0</span>
     </a>
     <a href="products.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="nav-icon-wrap"><i data-lucide="tag" class="icon"></i></span> Produits
+      <span class="nav-icon-wrap"><i data-lucide="tag" class="icon"></i></span> <span class="nav-label">Produits</span>
     </a>
     <div class="sidebar-section" data-role="proprietaire">Gestion</div>
     <a href="users.html" class="nav-item" data-role="proprietaire">
-      <span class="nav-icon-wrap"><i data-lucide="users" class="icon"></i></span> Utilisateurs
+      <span class="nav-icon-wrap"><i data-lucide="users" class="icon"></i></span> <span class="nav-label">Utilisateurs</span>
     </a>
     <a href="reports.html" class="nav-item" data-role="proprietaire">
-      <span class="nav-icon-wrap"><i data-lucide="chart-column" class="icon"></i></span> Rapports
+      <span class="nav-icon-wrap"><i data-lucide="chart-column" class="icon"></i></span> <span class="nav-label">Rapports</span>
     </a>
     <div class="sidebar-section">Compte</div>
     <a href="profile.html" class="nav-item">
-      <span class="nav-icon-wrap"><i data-lucide="user" class="icon"></i></span> Profil
+      <span class="nav-icon-wrap"><i data-lucide="user" class="icon"></i></span> <span class="nav-label">Profil</span>
     </a>
   </nav>
 

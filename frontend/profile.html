@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profil — Boutique D</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563EB">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js" integrity="sha384-WBRt9V/J/erVtkEuP91HUFRv9MvHzFiFOp4/zTDp4xkcMG7aOeIv2asTV4yxFLWa" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    .profile-card { max-width: 520px; }
+    .profile-header { display:flex; align-items:center; gap:14px; padding:20px; border-bottom:1px solid var(--border-soft); }
+    .profile-avatar { width:52px; height:52px; border-radius:50%; background:linear-gradient(150deg,var(--accent),#1E3A8A); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.1rem; flex-shrink:0; }
+    .profile-name { font-weight:700; font-size:1rem; }
+    .profile-role { font-size:.8rem; color:var(--text-muted); }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="sidebar-overlay"></div>
+<div class="layout">
+  <header class="topbar">
+    <button class="topbar-menu-btn" id="menu-btn"><i data-lucide="menu" class="icon"></i></button>
+    <div class="topbar-brand">
+      <div class="brand-icon"><i data-lucide="shopping-bag" class="icon" style="width:15px;height:15px"></i></div>
+      Boutique D
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-user" id="topbar-user"></div>
+    <button class="btn btn-ghost btn-sm" id="btn-logout">
+      <i data-lucide="log-out" class="icon"></i> Déconnexion
+    </button>
+  </header>
+
+  <nav class="sidebar">
+    <div class="sidebar-section">Principal</div>
+    <a href="dashboard.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="nav-icon-wrap"><i data-lucide="layout-grid" class="icon"></i></span> <span class="nav-label">Dashboard</span>
+    </a>
+    <a href="pos.html" class="nav-item">
+      <span class="nav-icon-wrap"><i data-lucide="store" class="icon"></i></span> <span class="nav-label">Caisse (POS)</span>
+    </a>
+    <div class="sidebar-section" data-role="proprietaire,gestionnaire">Stock</div>
+    <a href="stock.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="nav-icon-wrap"><i data-lucide="boxes" class="icon"></i></span> <span class="nav-label">Stock</span>
+      <span class="nav-badge hidden" id="alert-badge">0</span>
+    </a>
+    <a href="products.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="nav-icon-wrap"><i data-lucide="tag" class="icon"></i></span> <span class="nav-label">Produits</span>
+    </a>
+    <div class="sidebar-section" data-role="proprietaire">Gestion</div>
+    <a href="users.html" class="nav-item" data-role="proprietaire">
+      <span class="nav-icon-wrap"><i data-lucide="users" class="icon"></i></span> <span class="nav-label">Utilisateurs</span>
+    </a>
+    <a href="reports.html" class="nav-item" data-role="proprietaire">
+      <span class="nav-icon-wrap"><i data-lucide="chart-column" class="icon"></i></span> <span class="nav-label">Rapports</span>
+    </a>
+    <div class="sidebar-section">Compte</div>
+    <a href="profile.html" class="nav-item">
+      <span class="nav-icon-wrap"><i data-lucide="user" class="icon"></i></span> <span class="nav-label">Profil</span>
+    </a>
+  </nav>
+
+  <main class="main">
+    <div class="page-title">
+      <div class="page-icon" style="background:var(--accent)">
+        <i data-lucide="user" class="icon"></i>
+      </div>
+      Mon profil
+    </div>
+
+    <div class="card profile-card mb-6">
+      <div class="profile-header">
+        <div class="profile-avatar" id="profile-avatar"></div>
+        <div>
+          <div class="profile-name" id="profile-name">—</div>
+          <div class="profile-role" id="profile-role">—</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="grid grid-2 gap-3">
+          <div class="form-group">
+            <label class="form-label">Identifiant</label>
+            <input class="form-control" id="profile-username" disabled>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Téléphone</label>
+            <input class="form-control" id="profile-phone" disabled>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card profile-card">
+      <div class="card-header">
+        <div class="card-title"><i data-lucide="key" class="icon"></i> Changer le mot de passe</div>
+      </div>
+      <div class="card-body">
+        <div class="form-group mb-4">
+          <label class="form-label">Mot de passe actuel *</label>
+          <input class="form-control" id="pwd-current" type="password" placeholder="••••••••">
+        </div>
+        <div class="grid grid-2 gap-3 mb-4">
+          <div class="form-group">
+            <label class="form-label">Nouveau mot de passe *</label>
+            <input class="form-control" id="pwd-new" type="password" placeholder="Min. 6 caractères">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirmer *</label>
+            <input class="form-control" id="pwd-confirm" type="password" placeholder="Min. 6 caractères">
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-change-pwd">
+          <i data-lucide="check" class="icon"></i> Mettre à jour le mot de passe
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+requireAuth();
+
+async function loadProfile() {
+  try {
+    const me = await api.get('/auth/me');
+    document.getElementById('profile-avatar').textContent = me.name.charAt(0).toUpperCase();
+    document.getElementById('profile-name').textContent = me.name;
+    document.getElementById('profile-role').textContent = me.role;
+    document.getElementById('profile-username').value = me.username ?? '';
+    document.getElementById('profile-phone').value = me.phone ?? '—';
+  } catch (err) { toast(err.message, 'danger'); }
+}
+
+document.getElementById('btn-change-pwd').addEventListener('click', async () => {
+  const current  = document.getElementById('pwd-current').value;
+  const pwd      = document.getElementById('pwd-new').value;
+  const confirm_ = document.getElementById('pwd-confirm').value;
+
+  if (!current || !pwd || !confirm_) { toast('Remplissez tous les champs', 'warning'); return; }
+  if (pwd.length < 6) { toast('Le nouveau mot de passe doit faire au moins 6 caractères', 'warning'); return; }
+  if (pwd !== confirm_) { toast('Les mots de passe ne correspondent pas', 'warning'); return; }
+
+  const btn = document.getElementById('btn-change-pwd');
+  btn.disabled = true;
+  try {
+    await api.put('/auth/password', {
+      current_password: current,
+      new_password: pwd,
+      new_password_confirmation: confirm_,
+    });
+    toast('Mot de passe mis à jour', 'success');
+    ['pwd-current', 'pwd-new', 'pwd-confirm'].forEach(id => document.getElementById(id).value = '');
+  } catch (err) { toast(err.message, 'danger'); }
+  finally { btn.disabled = false; }
+});
+
+loadProfile();
+</script>
+</body>
+</html>

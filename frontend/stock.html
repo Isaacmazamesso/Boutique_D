@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stock — Boutique D</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#4f46e5">
+  <meta name="theme-color" content="#2563EB">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js" integrity="sha384-WBRt9V/J/erVtkEuP91HUFRv9MvHzFiFOp4/zTDp4xkcMG7aOeIv2asTV4yxFLWa" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="css/app.css">
   <style>
     .stock-tabs {
@@ -29,18 +29,18 @@
       font-family: var(--font);
     }
     .tab-btn.active {
-      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      background: var(--accent);
       color: white;
-      box-shadow: 0 4px 10px rgba(79,70,229,.3);
+      box-shadow: 0 4px 10px rgba(37,99,235,.3);
     }
     .tab-btn:not(.active):hover { background: var(--bg); color: var(--text); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
     .stock-status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 2px; }
-    .dot-normal  { background: #10b981; }
-    .dot-bas     { background: #f59e0b; }
-    .dot-rupture { background: #ef4444; }
+    .dot-normal  { background: var(--success); }
+    .dot-bas     { background: var(--warning); }
+    .dot-rupture { background: var(--danger); }
   </style>
 </head>
 <body>
@@ -48,47 +48,51 @@
 <div class="sidebar-overlay"></div>
 <div class="layout">
   <header class="topbar">
-    <button class="topbar-menu-btn" id="menu-btn"><i class="bi bi-list"></i></button>
+    <button class="topbar-menu-btn" id="menu-btn"><i data-lucide="menu" class="icon"></i></button>
     <div class="topbar-brand">
-      <div class="brand-icon"><i class="bi bi-bag-fill"></i></div>
+      <div class="brand-icon"><i data-lucide="shopping-bag" class="icon" style="width:15px;height:15px"></i></div>
       Boutique D
     </div>
     <div class="topbar-spacer"></div>
     <div class="topbar-user" id="topbar-user"></div>
     <button class="btn btn-ghost btn-sm" id="btn-logout">
-      <i class="bi bi-box-arrow-right"></i> Déconnexion
+      <i data-lucide="log-out" class="icon"></i> Déconnexion
     </button>
   </header>
 
   <nav class="sidebar">
     <div class="sidebar-section">Principal</div>
     <a href="dashboard.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="icon"><i class="bi bi-grid-1x2-fill"></i></span> Dashboard
+      <span class="nav-icon-wrap"><i data-lucide="layout-grid" class="icon"></i></span> <span class="nav-label">Dashboard</span>
     </a>
     <a href="pos.html" class="nav-item">
-      <span class="icon"><i class="bi bi-cash-register"></i></span> Caisse (POS)
+      <span class="nav-icon-wrap"><i data-lucide="store" class="icon"></i></span> <span class="nav-label">Caisse (POS)</span>
     </a>
     <div class="sidebar-section" data-role="proprietaire,gestionnaire">Stock</div>
     <a href="stock.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="icon"><i class="bi bi-boxes"></i></span> Stock
+      <span class="nav-icon-wrap"><i data-lucide="boxes" class="icon"></i></span> <span class="nav-label">Stock</span>
       <span class="nav-badge hidden" id="alert-badge">0</span>
     </a>
     <a href="products.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="icon"><i class="bi bi-tag-fill"></i></span> Produits
+      <span class="nav-icon-wrap"><i data-lucide="tag" class="icon"></i></span> <span class="nav-label">Produits</span>
     </a>
     <div class="sidebar-section" data-role="proprietaire">Gestion</div>
     <a href="users.html" class="nav-item" data-role="proprietaire">
-      <span class="icon"><i class="bi bi-people-fill"></i></span> Utilisateurs
+      <span class="nav-icon-wrap"><i data-lucide="users" class="icon"></i></span> <span class="nav-label">Utilisateurs</span>
     </a>
     <a href="reports.html" class="nav-item" data-role="proprietaire">
-      <span class="icon"><i class="bi bi-bar-chart-fill"></i></span> Rapports
+      <span class="nav-icon-wrap"><i data-lucide="chart-column" class="icon"></i></span> <span class="nav-label">Rapports</span>
+    </a>
+    <div class="sidebar-section">Compte</div>
+    <a href="profile.html" class="nav-item">
+      <span class="nav-icon-wrap"><i data-lucide="user" class="icon"></i></span> <span class="nav-label">Profil</span>
     </a>
   </nav>
 
   <main class="main">
     <div class="page-title">
-      <div class="page-icon" style="background:#059669">
-        <i class="bi bi-boxes"></i>
+      <div class="page-icon" style="background:var(--success)">
+        <i data-lucide="boxes" class="icon"></i>
       </div>
       Stock &amp; Inventaire
     </div>
@@ -96,16 +100,16 @@
     <!-- Tabs -->
     <div class="stock-tabs">
       <button class="tab-btn active" data-tab="stock">
-        <i class="bi bi-bar-chart-steps"></i> Vue Stock
+        <i data-lucide="gauge" class="icon"></i> Vue Stock
       </button>
       <button class="tab-btn" data-tab="entries">
-        <i class="bi bi-box-arrow-in-down"></i> Entrées
+        <i data-lucide="package-plus" class="icon"></i> Entrées
       </button>
       <button class="tab-btn" data-tab="exits">
-        <i class="bi bi-box-arrow-up"></i> Sorties
+        <i data-lucide="package-minus" class="icon"></i> Sorties
       </button>
       <button class="tab-btn" data-tab="inventories">
-        <i class="bi bi-clipboard2-check"></i> Inventaires
+        <i data-lucide="clipboard-check" class="icon"></i> Inventaires
       </button>
     </div>
 
@@ -119,10 +123,10 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title">
-            <i class="bi bi-list-ul" style="color:#4f46e5"></i> Tous les produits
+            <i data-lucide="list" class="icon" style="color:var(--accent)"></i> Tous les produits
           </div>
           <div style="position:relative">
-            <i class="bi bi-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none"></i>
+            <i data-lucide="search" class="icon" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-subtle);pointer-events:none"></i>
             <input class="form-control" id="stock-search" placeholder="Filtrer…" style="padding-left:34px;max-width:220px">
           </div>
         </div>
@@ -149,7 +153,7 @@
       <div class="flex justify-between items-center mb-4">
         <span class="font-bold" style="font-size:1rem">Réceptions de marchandise</span>
         <button class="btn btn-primary" id="btn-add-entry">
-          <i class="bi bi-plus-lg"></i> Nouvelle réception
+          <i data-lucide="plus" class="icon"></i> Nouvelle réception
         </button>
       </div>
       <div class="card">
@@ -172,7 +176,7 @@
       <div class="flex justify-between items-center mb-4">
         <span class="font-bold" style="font-size:1rem">Sorties manuelles (casse, perte…)</span>
         <button class="btn btn-accent" id="btn-add-exit">
-          <i class="bi bi-plus-lg"></i> Déclarer une sortie
+          <i data-lucide="plus" class="icon"></i> Déclarer une sortie
         </button>
       </div>
       <div class="card">
@@ -195,7 +199,7 @@
       <div class="flex justify-between items-center mb-4">
         <span class="font-bold" style="font-size:1rem">Inventaires physiques</span>
         <button class="btn btn-primary" id="btn-add-inventory" data-role="proprietaire,gestionnaire">
-          <i class="bi bi-plus-lg"></i> Nouvel inventaire
+          <i data-lucide="plus" class="icon"></i> Nouvel inventaire
         </button>
       </div>
       <div class="card">
@@ -220,9 +224,9 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">
-        <i class="bi bi-box-arrow-in-down" style="color:#10b981"></i> Réception de marchandise
+        <i data-lucide="package-plus" class="icon" style="color:var(--success)"></i> Réception de marchandise
       </span>
-      <button class="modal-close" data-dismiss><i class="bi bi-x-lg"></i></button>
+      <button class="modal-close" data-dismiss><i data-lucide="x" class="icon"></i></button>
     </div>
     <div class="modal-body">
       <div class="form-group">
@@ -260,7 +264,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss>Annuler</button>
-      <button class="btn btn-primary" id="btn-save-entry"><i class="bi bi-check-lg"></i> Enregistrer</button>
+      <button class="btn btn-primary" id="btn-save-entry"><i data-lucide="check" class="icon"></i> Enregistrer</button>
     </div>
   </div>
 </div>
@@ -270,9 +274,9 @@
   <div class="modal" style="max-width:420px">
     <div class="modal-header">
       <span class="modal-title">
-        <i class="bi bi-box-arrow-up" style="color:#f59e0b"></i> Déclarer une sortie
+        <i data-lucide="package-minus" class="icon" style="color:var(--warning)"></i> Déclarer une sortie
       </span>
-      <button class="modal-close" data-dismiss><i class="bi bi-x-lg"></i></button>
+      <button class="modal-close" data-dismiss><i data-lucide="x" class="icon"></i></button>
     </div>
     <div class="modal-body">
       <div class="form-group">
@@ -303,7 +307,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss>Annuler</button>
-      <button class="btn btn-accent" id="btn-save-exit"><i class="bi bi-check-lg"></i> Enregistrer</button>
+      <button class="btn btn-accent" id="btn-save-exit"><i data-lucide="check" class="icon"></i> Enregistrer</button>
     </div>
   </div>
 </div>
@@ -313,9 +317,9 @@
   <div class="modal" style="max-width:400px">
     <div class="modal-header">
       <span class="modal-title">
-        <i class="bi bi-clipboard2-plus" style="color:#4f46e5"></i> Nouvel inventaire
+        <i data-lucide="clipboard-plus" class="icon" style="color:var(--accent)"></i> Nouvel inventaire
       </span>
-      <button class="modal-close" data-dismiss><i class="bi bi-x-lg"></i></button>
+      <button class="modal-close" data-dismiss><i data-lucide="x" class="icon"></i></button>
     </div>
     <div class="modal-body">
       <div class="form-group">
@@ -336,7 +340,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss>Annuler</button>
-      <button class="btn btn-primary" id="btn-save-inventory"><i class="bi bi-check-lg"></i> Créer</button>
+      <button class="btn btn-primary" id="btn-save-inventory"><i data-lucide="check" class="icon"></i> Créer</button>
     </div>
   </div>
 </div>
@@ -375,27 +379,29 @@ async function loadProducts() {
 }
 
 async function loadStockTab() {
+  showTableSkeleton('stock-tbody', 6);
   try {
     stockData = await api.get('/stock/dashboard');
     const all = [...stockData.rupture, ...stockData.bas, ...stockData.normal];
 
     document.getElementById('stock-kpis').innerHTML = `
       <div class="kpi-card primary">
-        <div class="kpi-icon"><i class="bi bi-cash-stack" style="color:var(--primary)"></i></div>
+        <div class="kpi-icon"><i data-lucide="wallet" class="icon" style="color:var(--accent)"></i></div>
         <div class="kpi-label">Valeur stock (achat)</div>
         <div class="kpi-value">${fmt(stockData.totaux.valeur_achat)}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-icon"><i class="bi bi-boxes" style="color:var(--primary)"></i></div>
+        <div class="kpi-icon"><i data-lucide="boxes" class="icon" style="color:var(--accent)"></i></div>
         <div class="kpi-label">${stockData.totaux.nb_produits} produits</div>
         <div class="kpi-value">${stockData.normal.length} <small style="font-size:.9rem;color:var(--text-muted)">en stock</small></div>
         <div class="kpi-sub">${stockData.bas.length} stock bas · ${stockData.rupture.length} rupture</div>
       </div>
       <div class="kpi-card ${stockData.rupture.length > 0 ? 'danger' : ''}">
-        <div class="kpi-icon"><i class="bi bi-${stockData.rupture.length > 0 ? 'exclamation-triangle-fill' : 'check-circle-fill'}" style="color:${stockData.rupture.length > 0 ? 'var(--danger)' : 'var(--success)'}"></i></div>
+        <div class="kpi-icon"><i data-lucide="${stockData.rupture.length > 0 ? 'triangle-alert' : 'circle-check-big'}" class="icon" style="color:${stockData.rupture.length > 0 ? 'var(--danger)' : 'var(--success)'}"></i></div>
         <div class="kpi-label">Alertes</div>
         <div class="kpi-value">${stockData.rupture.length + stockData.bas.length}</div>
       </div>`;
+    refreshIcons();
 
     renderStockTable(all);
 
@@ -403,7 +409,10 @@ async function loadStockTab() {
       const q = e.target.value.toLowerCase();
       renderStockTable(all.filter(p => p.name.toLowerCase().includes(q)));
     });
-  } catch (err) { toast(err.message, 'danger'); }
+  } catch (err) {
+    toast(err.message, 'danger');
+    renderTable('stock-tbody', [], 'Erreur de chargement', 'triangle-alert');
+  }
 }
 
 function renderStockTable(rows) {
@@ -425,10 +434,11 @@ function renderStockTable(rows) {
           ${labels[p.stock_status]}
         </span>
       </td>
-    </tr>`), 'Aucun produit');
+    </tr>`), 'Aucun produit en stock', 'boxes');
 }
 
 async function loadEntriesTab() {
+  showTableSkeleton('entries-tbody', 4);
   try {
     const entries = await api.get('/stock/entries');
     renderTable('entries-tbody', entries.map(e => `
@@ -440,11 +450,15 @@ async function loadEntriesTab() {
         <td>${escHtml(e.supplier ?? '—')}</td>
         <td>${escHtml(e.invoice_number ?? '—')}</td>
         <td>${escHtml(e.received_by ?? '—')}</td>
-      </tr>`), 'Aucune entrée');
-  } catch (err) { toast(err.message, 'danger'); }
+      </tr>`), 'Aucune entrée', 'package-plus');
+  } catch (err) {
+    toast(err.message, 'danger');
+    renderTable('entries-tbody', [], 'Erreur de chargement', 'triangle-alert');
+  }
 }
 
 async function loadExitsTab() {
+  showTableSkeleton('exits-tbody', 4);
   try {
     const exits  = await api.get('/stock/exits');
     const motifs = { casse:'Casse', peremption:'Péremption', usage_interne:'Usage interne', perte:'Perte', vol:'Vol', autre:'Autre' };
@@ -456,11 +470,15 @@ async function loadExitsTab() {
         <td><span class="badge badge-warning">${motifs[e.reason] ?? escHtml(e.reason)}</span></td>
         <td>${escHtml(e.notes ?? '—')}</td>
         <td>${escHtml(e.created_by ?? '—')}</td>
-      </tr>`), 'Aucune sortie');
-  } catch (err) { toast(err.message, 'danger'); }
+      </tr>`), 'Aucune sortie', 'package-minus');
+  } catch (err) {
+    toast(err.message, 'danger');
+    renderTable('exits-tbody', [], 'Erreur de chargement', 'triangle-alert');
+  }
 }
 
 async function loadInventoriesTab() {
+  showTableSkeleton('inventories-tbody', 3);
   try {
     const invs = await api.get('/inventories');
     const statusBadge = { en_cours: 'badge-warning', valide: 'badge-success' };
@@ -475,11 +493,14 @@ async function loadInventoriesTab() {
         <td>${inv.validated_by ? escHtml(inv.validated_by) : '—'}</td>
         <td>
           ${inv.status === 'en_cours'
-            ? `<button class="btn btn-sm btn-primary" onclick="openInventoryCount(${inv.id})"><i class="bi bi-pencil-square"></i> Compter</button>`
-            : `<button class="btn btn-sm btn-outline" onclick="openInventoryDetail(${inv.id})"><i class="bi bi-eye"></i> Voir</button>`}
+            ? `<button class="btn btn-sm btn-primary" onclick="openInventoryCount(${inv.id})"><i data-lucide="square-pen" class="icon"></i> Compter</button>`
+            : `<button class="btn btn-sm btn-outline" onclick="openInventoryDetail(${inv.id})"><i data-lucide="eye" class="icon"></i> Voir</button>`}
         </td>
-      </tr>`), 'Aucun inventaire');
-  } catch (err) { toast(err.message, 'danger'); }
+      </tr>`), 'Aucun inventaire', 'clipboard-check');
+  } catch (err) {
+    toast(err.message, 'danger');
+    renderTable('inventories-tbody', [], 'Erreur de chargement', 'triangle-alert');
+  }
 }
 
 async function openInventoryCount(id)  { window.location.href = `inventory-count.html?id=${id}`; }

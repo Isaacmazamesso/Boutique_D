@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Produits — Boutique D</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#4f46e5">
+  <meta name="theme-color" content="#2563EB">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js" integrity="sha384-WBRt9V/J/erVtkEuP91HUFRv9MvHzFiFOp4/zTDp4xkcMG7aOeIv2asTV4yxFLWa" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="css/app.css">
   <style>
     .products-toolbar {
@@ -24,47 +24,51 @@
 <div class="sidebar-overlay"></div>
 <div class="layout">
   <header class="topbar">
-    <button class="topbar-menu-btn" id="menu-btn"><i class="bi bi-list"></i></button>
+    <button class="topbar-menu-btn" id="menu-btn"><i data-lucide="menu" class="icon"></i></button>
     <div class="topbar-brand">
-      <div class="brand-icon"><i class="bi bi-bag-fill"></i></div>
+      <div class="brand-icon"><i data-lucide="shopping-bag" class="icon" style="width:15px;height:15px"></i></div>
       Boutique D
     </div>
     <div class="topbar-spacer"></div>
     <div class="topbar-user" id="topbar-user"></div>
     <button class="btn btn-ghost btn-sm" id="btn-logout">
-      <i class="bi bi-box-arrow-right"></i> Déconnexion
+      <i data-lucide="log-out" class="icon"></i> Déconnexion
     </button>
   </header>
 
   <nav class="sidebar">
     <div class="sidebar-section">Principal</div>
     <a href="dashboard.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="icon"><i class="bi bi-grid-1x2-fill"></i></span> Dashboard
+      <span class="nav-icon-wrap"><i data-lucide="layout-grid" class="icon"></i></span> <span class="nav-label">Dashboard</span>
     </a>
     <a href="pos.html" class="nav-item">
-      <span class="icon"><i class="bi bi-cash-register"></i></span> Caisse (POS)
+      <span class="nav-icon-wrap"><i data-lucide="store" class="icon"></i></span> <span class="nav-label">Caisse (POS)</span>
     </a>
     <div class="sidebar-section" data-role="proprietaire,gestionnaire">Stock</div>
     <a href="stock.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="icon"><i class="bi bi-boxes"></i></span> Stock
+      <span class="nav-icon-wrap"><i data-lucide="boxes" class="icon"></i></span> <span class="nav-label">Stock</span>
       <span class="nav-badge hidden" id="alert-badge">0</span>
     </a>
     <a href="products.html" class="nav-item" data-role="proprietaire,gestionnaire">
-      <span class="icon"><i class="bi bi-tag-fill"></i></span> Produits
+      <span class="nav-icon-wrap"><i data-lucide="tag" class="icon"></i></span> <span class="nav-label">Produits</span>
     </a>
     <div class="sidebar-section" data-role="proprietaire">Gestion</div>
     <a href="users.html" class="nav-item" data-role="proprietaire">
-      <span class="icon"><i class="bi bi-people-fill"></i></span> Utilisateurs
+      <span class="nav-icon-wrap"><i data-lucide="users" class="icon"></i></span> <span class="nav-label">Utilisateurs</span>
     </a>
     <a href="reports.html" class="nav-item" data-role="proprietaire">
-      <span class="icon"><i class="bi bi-bar-chart-fill"></i></span> Rapports
+      <span class="nav-icon-wrap"><i data-lucide="chart-column" class="icon"></i></span> <span class="nav-label">Rapports</span>
+    </a>
+    <div class="sidebar-section">Compte</div>
+    <a href="profile.html" class="nav-item">
+      <span class="nav-icon-wrap"><i data-lucide="user" class="icon"></i></span> <span class="nav-label">Profil</span>
     </a>
   </nav>
 
   <main class="main">
     <div class="page-title">
-      <div class="page-icon" style="background:#7c3aed">
-        <i class="bi bi-tag-fill"></i>
+      <div class="page-icon" style="background:var(--accent)">
+        <i data-lucide="tag" class="icon"></i>
       </div>
       Produits &amp; Catégories
     </div>
@@ -73,10 +77,10 @@
     <div class="card mb-6">
       <div class="card-header">
         <div class="card-title">
-          <i class="bi bi-folder-fill" style="color:#f59e0b"></i> Catégories
+          <i data-lucide="folder" class="icon" style="color:var(--warning)"></i> Catégories
         </div>
         <button class="btn btn-sm btn-primary" id="btn-add-cat" data-role="proprietaire">
-          <i class="bi bi-plus-lg"></i> Catégorie
+          <i data-lucide="plus" class="icon"></i> Catégorie
         </button>
       </div>
       <div class="table-wrap">
@@ -98,16 +102,16 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title">
-          <i class="bi bi-tag-fill" style="color:#4f46e5"></i> Produits
+          <i data-lucide="tag" class="icon" style="color:var(--accent)"></i> Produits
         </div>
         <button class="btn btn-sm btn-primary" id="btn-add-product" data-role="proprietaire">
-          <i class="bi bi-plus-lg"></i> Produit
+          <i data-lucide="plus" class="icon"></i> Produit
         </button>
       </div>
       <div class="card-body" style="padding-bottom:0">
         <div class="products-toolbar">
           <div style="position:relative">
-            <i class="bi bi-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none"></i>
+            <i data-lucide="search" class="icon" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-subtle);pointer-events:none"></i>
             <input class="form-control" id="product-search" placeholder="Rechercher…" style="padding-left:34px;max-width:220px">
           </div>
           <select class="form-control form-select" id="product-cat-filter">
@@ -146,9 +150,9 @@
   <div class="modal" style="max-width:400px">
     <div class="modal-header">
       <span class="modal-title" id="cat-modal-title">
-        <i class="bi bi-folder-plus" style="color:#f59e0b"></i> Nouvelle catégorie
+        <i data-lucide="folder-plus" class="icon" style="color:var(--warning)"></i> Nouvelle catégorie
       </span>
-      <button class="modal-close" data-dismiss><i class="bi bi-x-lg"></i></button>
+      <button class="modal-close" data-dismiss><i data-lucide="x" class="icon"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="cat-id">
@@ -163,7 +167,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss>Annuler</button>
-      <button class="btn btn-primary" id="btn-save-cat"><i class="bi bi-check-lg"></i> Enregistrer</button>
+      <button class="btn btn-primary" id="btn-save-cat"><i data-lucide="check" class="icon"></i> Enregistrer</button>
     </div>
   </div>
 </div>
@@ -173,9 +177,9 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title" id="prod-modal-title">
-        <i class="bi bi-tag-fill" style="color:#4f46e5"></i> Nouveau produit
+        <i data-lucide="tag" class="icon" style="color:var(--accent)"></i> Nouveau produit
       </span>
-      <button class="modal-close" data-dismiss><i class="bi bi-x-lg"></i></button>
+      <button class="modal-close" data-dismiss><i data-lucide="x" class="icon"></i></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="prod-id">
@@ -228,7 +232,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss>Annuler</button>
-      <button class="btn btn-primary" id="btn-save-product"><i class="bi bi-check-lg"></i> Enregistrer</button>
+      <button class="btn btn-primary" id="btn-save-product"><i data-lucide="check" class="icon"></i> Enregistrer</button>
     </div>
   </div>
 </div>
@@ -249,6 +253,7 @@ async function init() {
 }
 
 async function loadCategories() {
+  showTableSkeleton('cats-tbody', 3);
   try {
     categories = await api.get('/categories');
     const prodCatSel = document.getElementById('prod-cat');
@@ -264,16 +269,20 @@ async function loadCategories() {
         <td><span class="badge badge-neutral">${c.products_count ?? 0} produit(s)</span></td>
         <td>${isOwner ? `
           <button class="btn btn-sm btn-outline" onclick="editCat(${c.id})">
-            <i class="bi bi-pencil"></i> Modifier
+            <i data-lucide="pencil" class="icon"></i> Modifier
           </button>
           <button class="btn btn-sm btn-danger" style="margin-left:6px" onclick="deleteCat(${c.id})">
-            <i class="bi bi-trash3"></i>
+            <i data-lucide="trash-2" class="icon"></i>
           </button>` : ''}</td>
-      </tr>`), 'Aucune catégorie');
-  } catch (err) { toast(err.message, 'danger'); }
+      </tr>`), 'Aucune catégorie', 'folder-open');
+  } catch (err) {
+    toast(err.message, 'danger');
+    renderTable('cats-tbody', [], 'Erreur de chargement', 'triangle-alert');
+  }
 }
 
 async function loadProducts(query = '') {
+  showTableSkeleton('products-tbody', 6);
   try {
     const params = new URLSearchParams();
     if (query) params.set('search', query);
@@ -287,9 +296,9 @@ async function loadProducts(query = '') {
       <tr>
         <td>
           <strong>${escHtml(p.name)}</strong>
-          ${p.barcode ? `<br><span class="text-muted font-sm"><i class="bi bi-upc-scan"></i> ${escHtml(p.barcode)}</span>` : ''}
+          ${p.barcode ? `<br><span class="text-muted font-sm"><i data-lucide="scan-barcode" class="icon"></i> ${escHtml(p.barcode)}</span>` : ''}
         </td>
-        <td>${escHtml(p.category?.name ?? '—')}</td>
+        <td>${escHtml(p.category ?? '—')}</td>
         <td>${escHtml(p.unit)}</td>
         <td class="font-bold">${p.prices?.retail_price ? fmt(p.prices.retail_price) : '—'}</td>
         <td>${p.prices?.wholesale_price ? fmt(p.prices.wholesale_price) : '—'}</td>
@@ -297,13 +306,16 @@ async function loadProducts(query = '') {
         <td><span class="badge ${p.is_active ? 'badge-success' : 'badge-danger'}">${p.is_active ? 'Actif' : 'Inactif'}</span></td>
         <td>${isOwner ? `
           <button class="btn btn-sm btn-outline" onclick="editProduct(${p.id})">
-            <i class="bi bi-pencil"></i>
+            <i data-lucide="pencil" class="icon"></i>
           </button>
           <button class="btn btn-sm btn-ghost" style="margin-left:4px" onclick="toggleProduct(${p.id})">
-            ${p.is_active ? '<i class="bi bi-toggle-on"></i>' : '<i class="bi bi-toggle-off"></i>'}
+            ${p.is_active ? '<i data-lucide="toggle-right" class="icon"></i>' : '<i data-lucide="toggle-left" class="icon"></i>'}
           </button>` : ''}</td>
-      </tr>`), 'Aucun produit');
-  } catch (err) { toast(err.message, 'danger'); }
+      </tr>`), 'Aucun produit', 'package');
+  } catch (err) {
+    toast(err.message, 'danger');
+    renderTable('products-tbody', [], 'Erreur de chargement', 'triangle-alert');
+  }
 }
 
 function editCat(id) {
@@ -312,8 +324,9 @@ function editCat(id) {
   document.getElementById('cat-id').value   = id;
   document.getElementById('cat-name').value = cat.name;
   document.getElementById('cat-desc').value = cat.description ?? '';
-  document.getElementById('cat-modal-title').innerHTML = '<i class="bi bi-folder2-open" style="color:#f59e0b"></i> Modifier catégorie';
+  document.getElementById('cat-modal-title').innerHTML = '<i data-lucide="folder-open" class="icon" style="color:var(--warning)"></i> Modifier catégorie';
   openModal('modal-cat');
+  refreshIcons();
 }
 
 async function deleteCat(id) {
@@ -340,8 +353,9 @@ async function editProduct(id) {
   document.getElementById('prod-min-stock').value = p.min_stock_alert ?? '';
   document.getElementById('prod-expiry').value    = p.expiry_date ?? '';
   document.getElementById('prod-desc').value      = p.description ?? '';
-  document.getElementById('prod-modal-title').innerHTML = '<i class="bi bi-pencil-square" style="color:#4f46e5"></i> Modifier produit';
+  document.getElementById('prod-modal-title').innerHTML = '<i data-lucide="square-pen" class="icon" style="color:var(--accent)"></i> Modifier produit';
   openModal('modal-product');
+  refreshIcons();
 }
 
 async function toggleProduct(id) {
@@ -365,8 +379,9 @@ function bindEvents() {
     document.getElementById('cat-id').value   = '';
     document.getElementById('cat-name').value = '';
     document.getElementById('cat-desc').value = '';
-    document.getElementById('cat-modal-title').innerHTML = '<i class="bi bi-folder-plus" style="color:#f59e0b"></i> Nouvelle catégorie';
+    document.getElementById('cat-modal-title').innerHTML = '<i data-lucide="folder-plus" class="icon" style="color:var(--warning)"></i> Nouvelle catégorie';
     openModal('modal-cat');
+    refreshIcons();
   });
 
   document.getElementById('btn-save-cat').addEventListener('click', async () => {
@@ -386,8 +401,9 @@ function bindEvents() {
     ['prod-id','prod-name','prod-barcode','prod-retail','prod-purchase','prod-wholesale','prod-min-gros','prod-min-stock','prod-expiry','prod-desc'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('prod-cat').value  = '';
     document.getElementById('prod-unit').value = '';
-    document.getElementById('prod-modal-title').innerHTML = '<i class="bi bi-tag-fill" style="color:#4f46e5"></i> Nouveau produit';
+    document.getElementById('prod-modal-title').innerHTML = '<i data-lucide="tag" class="icon" style="color:var(--accent)"></i> Nouveau produit';
     openModal('modal-product');
+    refreshIcons();
   });
 
   document.getElementById('btn-save-product').addEventListener('click', async () => {
