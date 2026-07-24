@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paramètres — Boutique D</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563EB">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js" integrity="sha384-WBRt9V/J/erVtkEuP91HUFRv9MvHzFiFOp4/zTDp4xkcMG7aOeIv2asTV4yxFLWa" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="sidebar-overlay"></div>
+<div class="layout">
+  <header class="topbar">
+    <button class="topbar-menu-btn" id="menu-btn"><i data-lucide="menu" class="icon"></i></button>
+    <div class="topbar-brand">
+      <div class="brand-icon"><i data-lucide="shopping-bag" class="icon" style="width:15px;height:15px"></i></div>
+      Boutique D
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-user" id="topbar-user"></div>
+    <button class="btn btn-ghost btn-sm" id="btn-logout">
+      <i data-lucide="log-out" class="icon"></i> Déconnexion
+    </button>
+  </header>
+
+  <nav class="sidebar">
+    <div class="sidebar-section">Principal</div>
+    <a href="dashboard.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="nav-icon-wrap"><i data-lucide="layout-grid" class="icon"></i></span> <span class="nav-label">Dashboard</span>
+    </a>
+    <a href="pos.html" class="nav-item">
+      <span class="nav-icon-wrap"><i data-lucide="store" class="icon"></i></span> <span class="nav-label">Caisse (POS)</span>
+    </a>
+    <div class="sidebar-section" data-role="proprietaire,gestionnaire">Stock</div>
+    <a href="stock.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="nav-icon-wrap"><i data-lucide="boxes" class="icon"></i></span> <span class="nav-label">Stock</span>
+      <span class="nav-badge hidden" id="alert-badge">0</span>
+    </a>
+    <a href="products.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="nav-icon-wrap"><i data-lucide="tag" class="icon"></i></span> <span class="nav-label">Produits</span>
+    </a>
+    <div class="sidebar-section" data-role="proprietaire">Gestion</div>
+    <a href="users.html" class="nav-item" data-role="proprietaire">
+      <span class="nav-icon-wrap"><i data-lucide="users" class="icon"></i></span> <span class="nav-label">Utilisateurs</span>
+    </a>
+    <a href="reports.html" class="nav-item" data-role="proprietaire">
+      <span class="nav-icon-wrap"><i data-lucide="chart-column" class="icon"></i></span> <span class="nav-label">Rapports</span>
+    </a>
+    <a href="settings.html" class="nav-item" data-role="proprietaire">
+      <span class="nav-icon-wrap"><i data-lucide="settings" class="icon"></i></span> <span class="nav-label">Paramètres</span>
+    </a>
+    <div class="sidebar-section">Compte</div>
+    <a href="profile.html" class="nav-item">
+      <span class="nav-icon-wrap"><i data-lucide="user" class="icon"></i></span> <span class="nav-label">Profil</span>
+    </a>
+  </nav>
+
+  <main class="main">
+    <div class="page-title">
+      <div class="page-icon" style="background:var(--accent)">
+        <i data-lucide="settings" class="icon"></i>
+      </div>
+      Paramètres système
+    </div>
+
+    <div class="card" style="max-width:640px">
+      <div class="card-header">
+        <div class="card-title">
+          <i data-lucide="sliders-horizontal" class="icon" style="color:var(--accent)"></i> Seuils métier
+        </div>
+      </div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:18px" id="settings-form"></div>
+      <div class="modal-footer" style="justify-content:flex-end">
+        <button class="btn btn-primary" id="btn-save-settings">
+          <i data-lucide="check" class="icon"></i> Enregistrer
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+requireAuth();
+
+let settings = [];
+
+async function loadSettings() {
+  const container = document.getElementById('settings-form');
+  container.innerHTML = Array.from({ length: 5 }, () =>
+    '<div class="skeleton-line" style="height:52px"></div>'
+  ).join('');
+
+  try {
+    settings = await api.get('/settings');
+    container.innerHTML = settings.map(s => `
+      <div class="form-group">
+        <label class="form-label" for="setting-${s.key}">${escHtml(s.label)}</label>
+        <div class="flex gap-2 items-center">
+          <input class="form-control" id="setting-${s.key}" type="number"
+                 min="${s.min}" ${s.max !== null ? `max="${s.max}"` : ''} value="${s.value}" style="max-width:160px">
+          <span class="text-muted font-sm">${escHtml(s.unit)}</span>
+        </div>
+        <span class="form-hint">${escHtml(s.description)}</span>
+      </div>`).join('');
+    refreshIcons();
+  } catch (err) {
+    toast(err.message, 'danger');
+    container.innerHTML = `<div class="empty-state"><div class="icon-wrap"><i data-lucide="triangle-alert" class="icon"></i></div><p>Erreur de chargement</p></div>`;
+    refreshIcons();
+  }
+}
+
+async function saveSettings() {
+  const payload = {};
+  for (const s of settings) {
+    const input = document.getElementById(`setting-${s.key}`);
+    payload[s.key] = Number(input.value);
+  }
+
+  const btn = document.getElementById('btn-save-settings');
+  btn.disabled = true;
+  try {
+    settings = await api.put('/settings', payload);
+    toast('Paramètres mis à jour.', 'success');
+  } catch (err) {
+    toast(err.message, 'danger');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
+
+loadSettings();
+</script>
+</body>
+</html>
