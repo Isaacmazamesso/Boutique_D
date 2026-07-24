@@ -12,15 +12,53 @@ use App\Models\StockEntry;
 use App\Models\StockExit;
 use App\Models\Setting;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Rap2hpoutre\FastExcel\FastExcel;
 
 class ReportController extends Controller
 {
     // ── Rapport ventes ────────────────────────────────────────────────────────
 
     public function sales(Request $request): JsonResponse
+    {
+        return $this->success($this->computeSalesReport($request));
+    }
+
+    public function salesPdf(Request $request)
+    {
+        $data = $this->computeSalesReport($request);
+
+        return Pdf::loadView('reports.sales', $data)
+            ->stream('rapport-ventes-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function salesExcel(Request $request)
+    {
+        $data = $this->computeSalesReport($request);
+
+        $rows = collect($data['ventes'])->map(fn($v) => [
+            'N° Reçu'  => $v['receipt_number'],
+            'Date'     => $v['date'],
+            'Caissier' => $v['cashier'] ?? '—',
+            'Type'     => $v['sale_type'] === 'gros' ? 'Gros' : 'Détail',
+            'Paiement' => $v['payment_method'] === 'especes' ? 'Espèces' : 'Mobile Money',
+            'Articles' => $v['nb_articles'],
+            'Total'    => $v['total'],
+        ]);
+
+        $response = (new FastExcel($rows))->download('rapport-ventes-' . now()->format('Y-m-d') . '.xlsx');
+        // FastExcel/OpenSpout set le Content-Type via header() natif au moment du stream,
+        // ce qui n'apparaît pas dans le header bag de la Response (donc invisible en test HTTP) :
+        // on le fixe explicitement pour que le client (et les tests) le voient de façon fiable.
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        return $response;
+    }
+
+    private function computeSalesReport(Request $request): array
     {
         $request->validate([
             'period'         => 'nullable|in:today,week,month,custom',
@@ -65,7 +103,7 @@ class ReportController extends Controller
             $byPayment[$s->payment_method]['total'] += $s->total;
         }
 
-        return $this->success([
+        return [
             'periode'      => ['debut' => $start->format('d/m/Y'), 'fin' => $end->format('d/m/Y')],
             'resume' => [
                 'nb_ventes'    => $sales->count(),
@@ -84,8 +122,8 @@ class ReportController extends Controller
                 'payment_method' => $s->payment_method,
                 'total'          => $s->total,
                 'nb_articles'    => $s->items->sum('quantity'),
-            ]),
-        ]);
+            ])->toArray(),
+        ];
     }
 
     // ── Rapport stock ─────────────────────────────────────────────────────────
