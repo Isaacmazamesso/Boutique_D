@@ -182,6 +182,13 @@
       .pos-right  { max-height: 50dvh; }
       .products-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
     }
+
+    @media print {
+      body * { visibility: hidden !important; }
+      .receipt, .receipt * { visibility: visible !important; }
+      .receipt { position: absolute; left: 0; top: 0; width: 80mm; box-shadow: none; border: none; }
+      .no-print { display: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -702,8 +709,9 @@ function showReceipt(sale) {
   document.getElementById('payment-body').innerHTML = `
     <div class="receipt">
       <h3><i data-lucide="shopping-bag" class="icon"></i> Boutique D</h3>
-      <div class="receipt-sub">${escHtml(sale.created_at ?? '')}</div>
+      <div class="receipt-sub">${escHtml(sale.date ?? '')}</div>
       <div class="receipt-sub">${escHtml(sale.receipt_number ?? '')}</div>
+      <div class="receipt-sub">Caissier : ${escHtml(sale.cashier ?? '—')}</div>
       <hr>
       ${lines}
       <hr>
@@ -715,6 +723,10 @@ function showReceipt(sale) {
       ${sale.amount_paid ? `<div class="receipt-row"><span>Reçu</span><span>${fmt(sale.amount_paid)}</span></div>` : ''}
       ${sale.change_given > 0 ? `<div class="receipt-row"><span>Monnaie rendue</span><span>${fmt(sale.change_given)}</span></div>` : ''}
       <div class="receipt-footer">Merci pour votre achat !</div>
+    </div>
+    <div class="flex gap-2 mt-4 no-print">
+      <button class="btn w-full" onclick="window.print()"><i data-lucide="printer" class="icon"></i> Imprimer</button>
+      <button class="btn w-full" onclick="openReceiptPdf(${Number(sale.id)})"><i data-lucide="file-down" class="icon"></i> PDF</button>
     </div>`;
   document.getElementById('payment-footer').innerHTML = `
     <button class="btn btn-primary btn-block" data-dismiss>
@@ -723,6 +735,18 @@ function showReceipt(sale) {
   openModal('modal-payment');
   refreshIcons();
   toast('Vente enregistrée avec succès !', 'success');
+}
+
+async function openReceiptPdf(saleId) {
+  try {
+    const res = await fetch(`${API_BASE}/sales/${saleId}/receipt-pdf`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, Accept: 'application/pdf' },
+    });
+    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    window.open(URL.createObjectURL(await res.blob()), '_blank');
+  } catch (err) {
+    toast(err.message, 'danger');
+  }
 }
 
 function bindEvents() {
