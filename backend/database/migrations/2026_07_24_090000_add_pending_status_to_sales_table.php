@@ -16,7 +16,11 @@ return new class extends Migration
 
         Schema::table('sales', function (Blueprint $table) {
             $table->foreignId('cashier_id')->nullable()->change();
-            $table->enum('payment_method', ['especes', 'mobile_money'])->nullable()->change();
+            // Redéclarer en varchar (et non enum()) évite un bug de Laravel sur PostgreSQL :
+            // enum()->change() génère "ALTER COLUMN ... TYPE varchar(255) CHECK (...)" en une
+            // seule clause, syntaxe invalide côté PostgreSQL (le CHECK existant, posé par la
+            // migration d'origine, reste intact — seule la type/nullabilité déclarée change).
+            $table->string('payment_method')->nullable()->change();
         });
     }
 
@@ -24,7 +28,7 @@ return new class extends Migration
     {
         Schema::table('sales', function (Blueprint $table) {
             $table->foreignId('cashier_id')->nullable(false)->change();
-            $table->enum('payment_method', ['especes', 'mobile_money'])->default('especes')->nullable(false)->change();
+            $table->string('payment_method')->default('especes')->nullable(false)->change();
             $table->dropColumn('status');
         });
     }
