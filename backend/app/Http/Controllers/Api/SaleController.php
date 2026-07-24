@@ -309,6 +309,11 @@ class SaleController extends Controller
 
     private function formatSale(Sale $sale): array
     {
+        $refundedByProduct = \App\Models\RefundItem::whereHas('refund', fn($q) => $q->where('sale_id', $sale->id))
+            ->selectRaw('product_id, SUM(quantity) as qty')
+            ->groupBy('product_id')
+            ->pluck('qty', 'product_id');
+
         return [
             'id'             => $sale->id,
             'receipt_number' => $sale->receipt_number,
@@ -326,12 +331,13 @@ class SaleController extends Controller
             'date'           => $sale->created_at->format('d/m/Y H:i'),
             'items'          => $sale->relationLoaded('items')
                 ? $sale->items->map(fn($i) => [
-                    'id'         => $i->id,
-                    'product'    => $i->product?->name,
-                    'unit'       => $i->product?->unit,
-                    'quantity'   => $i->quantity,
-                    'unit_price' => $i->unit_price,
-                    'total'      => $i->total,
+                    'id'                => $i->id,
+                    'product'           => $i->product?->name,
+                    'unit'              => $i->product?->unit,
+                    'quantity'          => $i->quantity,
+                    'unit_price'        => $i->unit_price,
+                    'total'             => $i->total,
+                    'refunded_quantity' => (int) ($refundedByProduct[$i->product_id] ?? 0),
                 ])
                 : [],
         ];
