@@ -159,4 +159,48 @@ class ReportExportTest extends TestCase
             $response->headers->get('content-type')
         );
     }
+
+    // ── Employés ─────────────────────────────────────────────────────────
+
+    public function test_le_rapport_employes_json_est_inchange_apres_le_refactor(): void
+    {
+        $owner   = $this->makeUser('proprietaire');
+        $product = $this->makeProduct(retail: 500);
+        $this->makeSaleViaApi($owner, $product, qty: 1);
+
+        Sanctum::actingAs($owner);
+        $response = $this->getJson('/api/reports/employees?period=today');
+
+        $response->assertOk();
+        $data = $response->json('data');
+        $this->assertArrayHasKey('employes', $data);
+        $employe = collect($data['employes'])->firstWhere('id', $owner->id);
+        $this->assertSame(1, $employe['nb_ventes']);
+    }
+
+    public function test_le_pdf_du_rapport_employes_est_genere(): void
+    {
+        $owner = $this->makeUser('proprietaire');
+
+        Sanctum::actingAs($owner);
+        $response = $this->get('/api/reports/employees/pdf?period=today');
+
+        $response->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('content-type'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_l_excel_du_rapport_employes_est_genere(): void
+    {
+        $owner = $this->makeUser('proprietaire');
+
+        Sanctum::actingAs($owner);
+        $response = $this->get('/api/reports/employees/excel?period=today');
+
+        $response->assertOk();
+        $this->assertSame(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            $response->headers->get('content-type')
+        );
+    }
 }

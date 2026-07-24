@@ -341,6 +341,43 @@ class ReportController extends Controller
 
     public function employees(Request $request): JsonResponse
     {
+        return $this->success($this->computeEmployeesReport($request));
+    }
+
+    public function employeesPdf(Request $request)
+    {
+        $data = $this->computeEmployeesReport($request);
+
+        return Pdf::loadView('reports.employees', $data)
+            ->stream('rapport-employes-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function employeesExcel(Request $request)
+    {
+        $data = $this->computeEmployeesReport($request);
+
+        $rows = collect($data['employes'])->map(fn($e) => [
+            'Employé'          => $e['name'],
+            'Rôle'             => $e['role'],
+            'Ventes'           => $e['nb_ventes'],
+            'CA'               => $e['montant_vendu'],
+            'Panier moyen'     => $e['panier_moyen'],
+            'Remboursements'   => $e['nb_remboursements'],
+            'Sessions'         => $e['nb_sessions'],
+            'Heures'           => $e['heures_connexion'],
+        ]);
+
+        $response = (new FastExcel($rows))->download('rapport-employes-' . now()->format('Y-m-d') . '.xlsx');
+        // FastExcel/OpenSpout set le Content-Type via header() natif au moment du stream,
+        // ce qui n'apparaît pas dans le header bag de la Response (invisible en test HTTP) :
+        // on le fixe explicitement (confirmé nécessaire en B2-T1, vendor/rap2hpoutre/fast-excel/src/Exportable.php:78-88).
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        return $response;
+    }
+
+    private function computeEmployeesReport(Request $request): array
+    {
         [$start, $end] = $this->resolvePeriod($request);
 
         $employes = User::whereHas('roles', fn($q) =>
@@ -382,10 +419,10 @@ class ReportController extends Controller
             ];
         })->sortByDesc('montant_vendu')->values();
 
-        return $this->success([
+        return [
             'periode'  => ['debut' => $start->format('d/m/Y'), 'fin' => $end->format('d/m/Y')],
-            'employes' => $stats,
-        ]);
+            'employes' => $stats->toArray(),
+        ];
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
