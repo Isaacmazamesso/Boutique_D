@@ -243,6 +243,57 @@
   </div>
 </div>
 
+<!-- Modal prix en masse -->
+<div class="modal-backdrop" id="modal-bulk-price">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <span class="modal-title">
+        <i data-lucide="percent" class="icon" style="color:var(--accent)"></i> Modifier les prix (<span id="bp-count">0</span> produits)
+      </span>
+      <button class="modal-close" data-dismiss><i data-lucide="x" class="icon"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="grid grid-2 gap-3">
+        <div class="form-group">
+          <label class="form-label">Prix à ajuster</label>
+          <select class="form-control form-select" id="bp-field">
+            <option value="retail_price">Prix détail</option>
+            <option value="wholesale_price">Prix gros</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type d'ajustement</label>
+          <select class="form-control form-select" id="bp-type">
+            <option value="percent">Pourcentage (%)</option>
+            <option value="fixed">Montant fixe (FCFA)</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label" id="bp-value-label">Valeur (% — utilisez un signe négatif pour baisser)</label>
+          <input class="form-control" id="bp-value" type="number" step="any" placeholder="Ex: 10 ou -5">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Motif (optionnel)</label>
+          <input class="form-control" id="bp-reason" type="text" maxlength="255" placeholder="Ex: Hausse fournisseur">
+        </div>
+      </div>
+
+      <div id="bp-error" class="alert alert-danger hidden mt-4"></div>
+
+      <div class="table-wrap mt-4" style="max-height:280px;overflow-y:auto">
+        <table>
+          <thead><tr><th>Produit</th><th class="text-right">Actuel</th><th class="text-right">Nouveau</th></tr></thead>
+          <tbody id="bp-preview-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss>Annuler</button>
+      <button class="btn btn-primary" id="btn-bulk-price-submit"><i data-lucide="check" class="icon"></i> Appliquer</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script>
@@ -413,6 +464,12 @@ function bindEvents() {
   document.getElementById('product-cat-filter').addEventListener('change', () => loadProducts());
   document.getElementById('product-status-filter').addEventListener('change', () => loadProducts());
 
+  document.getElementById('btn-bulk-price').addEventListener('click', openBulkPriceModal);
+  document.getElementById('btn-bulk-price-submit').addEventListener('click', submitBulkPrice);
+  ['bp-field', 'bp-type', 'bp-value'].forEach(id =>
+    document.getElementById(id).addEventListener('input', renderBulkPricePreview)
+  );
+
   document.getElementById('btn-add-cat')?.addEventListener('click', () => {
     document.getElementById('cat-id').value   = '';
     document.getElementById('cat-name').value = '';
@@ -470,6 +527,87 @@ function bindEvents() {
       loadProducts();
     } catch (err) { toast(err.message, 'danger'); }
   });
+}
+
+function computeAdjustedPrice(old, type, value) {
+  return type === 'percent'
+    ? Math.round(old * (1 + value / 100))
+    : Math.round(old + value);
+}
+
+function openBulkPriceModal() {
+  if (selectedProductIds.size === 0) return;
+  document.getElementById('bp-count').textContent = selectedProductIds.size;
+  document.getElementById('bp-value').value = '';
+  document.getElementById('bp-reason').value = '';
+  document.getElementById('bp-error').classList.add('hidden');
+  document.getElementById('btn-bulk-price-submit').disabled = false;
+  renderBulkPricePreview();
+  openModal('modal-bulk-price');
+}
+
+function renderBulkPricePreview() {
+  const field = document.getElementById('bp-field').value;
+  const type  = document.getElementById('bp-type').value;
+  const value = parseFloat(document.getElementById('bp-value').value);
+  const label = type === 'percent' ? "Valeur (% — utilisez un signe négatif pour baisser)" : "Valeur (FCFA — utilisez un signe négatif pour baisser)";
+  document.getElementById('bp-value-label').textContent = label;
+
+  const selected = products.filter(p => selectedProductIds.has(p.id));
+  let hasNegative = false;
+
+  const rows = selected.map(p => {
+    const old = p.prices?.[field] ?? 0;
+    const valid = !Number.isNaN(value);
+    const next = valid ? computeAdjustedPrice(old, type, value) : old;
+    if (valid && next < 0) hasNegative = true;
+    return `<tr>
+      <td>${escHtml(p.name)}</td>
+      <td class="text-right">${fmt(old)}</td>
+      <td class="text-right ${valid && next < 0 ? 'text-danger font-bold' : ''}">${valid ? fmt(next) : '—'}</td>
+    </tr>`;
+  });
+
+  document.getElementById('bp-preview-tbody').innerHTML = rows.join('');
+
+  const errEl = document.getElementById('bp-error');
+  const submitBtn = document.getElementById('btn-bulk-price-submit');
+  if (hasNegative) {
+    errEl.textContent = 'Au moins un nouveau prix serait négatif — corrigez la valeur avant de continuer.';
+    errEl.classList.remove('hidden');
+    submitBtn.disabled = true;
+  } else {
+    errEl.classList.add('hidden');
+    submitBtn.disabled = false;
+  }
+}
+
+async function submitBulkPrice() {
+  const field = document.getElementById('bp-field').value;
+  const type  = document.getElementById('bp-type').value;
+  const value = parseFloat(document.getElementById('bp-value').value);
+  const reason = document.getElementById('bp-reason').value.trim();
+
+  if (Number.isNaN(value)) { toast('Saisissez une valeur d\'ajustement.', 'warning'); return; }
+
+  const btn = document.getElementById('btn-bulk-price-submit');
+  btn.disabled = true;
+  try {
+    const result = await api.post('/products/bulk-price-update', {
+      product_ids: [...selectedProductIds],
+      field,
+      adjustment_type: type,
+      adjustment_value: value,
+      reason: reason || null,
+    });
+    toast(`${result.length} produit(s) mis à jour.`, 'success');
+    closeModal('modal-bulk-price');
+    loadProducts();
+  } catch (err) {
+    toast(err.message, 'danger');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 init();
