@@ -167,6 +167,27 @@ function toast(msg, type = 'success', duration = 3500) {
   }, duration);
 }
 
+// ── Téléchargement de fichier authentifié (PDF, Excel) ──────────────────────
+async function downloadFile(url, filename) {
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+    if (!res.ok) throw new Error(`Erreur ${res.status}`);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch (err) {
+    toast(err.message, 'danger');
+  }
+}
+
 // ── Modal helpers ─────────────────────────────────────────────────────────────
 function openModal(id) {
   const m = document.getElementById(id);
