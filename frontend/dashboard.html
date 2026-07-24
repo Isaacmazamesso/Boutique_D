@@ -141,7 +141,8 @@
 requireAuth();
 
 async function loadDashboard() {
-  showTableSkeleton('top5-tbody', 5);
+  const top5Tbody = document.getElementById('top5-tbody');
+  if (!top5Tbody || !top5Tbody.querySelector('tr:not(.skeleton-row)')) showTableSkeleton('top5-tbody', 5);
   try {
     const d = await api.get('/dashboard');
 

@@ -449,11 +449,17 @@ function updateSessionBanner() {
 
 async function loadProducts() {
   const grid = document.getElementById('products-grid');
-  grid.innerHTML = Array(8).fill('<div class="skeleton" style="height:92px;border-radius:12px"></div>').join('');
+  if (!grid.children.length || ![...grid.children].some(el => !el.classList.contains('skeleton'))) {
+    grid.innerHTML = Array(8).fill('<div class="skeleton" style="height:92px;border-radius:12px"></div>').join('');
+  }
   try {
     allProducts = await api.get('/products');
     renderProducts(allProducts);
-  } catch (err) { toast(err.message, 'danger'); }
+  } catch (err) {
+    toast(err.message, 'danger');
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon-wrap"><i data-lucide="triangle-alert" class="icon"></i></div><h4>Erreur de chargement</h4></div>';
+    refreshIcons();
+  }
 }
 
 async function loadCategories() {
