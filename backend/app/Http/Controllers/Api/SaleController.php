@@ -324,12 +324,13 @@ class SaleController extends Controller
 
         $saleType = $request->sale_type ?? $sale->sale_type;
 
+        // Aucune mutation avant ce point : toute la validation se fait en lecture seule.
+        // Si les articles sont modifiés, la quantité déjà réservée par CE panier pour un
+        // produit compte comme "disponible" pour la vérification (elle sera réellement
+        // restituée puis re-décomptée à l'intérieur de la transaction plus bas, jamais avant).
         if ($request->has('items')) {
-            // Restituer le stock des articles actuels avant de recalculer
-            $sale->load('items.product.stock');
-            foreach ($sale->items as $oldItem) {
-                $oldItem->product?->stock?->increment('quantity', $oldItem->quantity);
-            }
+            $sale->load('items.product');
+            $oldQuantitiesByProduct = $sale->items->groupBy('product_id')->map(fn($items) => $items->sum('quantity'));
 
             $productIds = collect($request->items)->pluck('product_id');
             $products   = Product::with(['price', 'stock'])->whereIn('id', $productIds)->get()->keyBy('id');
@@ -344,7 +345,8 @@ class SaleController extends Controller
                     return $this->error("Produit ID {$item['product_id']} indisponible.", 422);
                 }
 
-                $stockQty = $product->stock?->quantity ?? 0;
+                $reserved = $oldQuantitiesByProduct[$product->id] ?? 0;
+                $stockQty = ($product->stock?->quantity ?? 0) + $reserved;
                 if ($stockQty < $item['quantity']) {
                     return $this->error(
                         "Stock insuffisant pour \"{$product->name}\" : {$stockQty} disponible(s), {$item['quantity']} demandé(s).",
@@ -407,8 +409,22 @@ class SaleController extends Controller
             return $this->error("Montant reçu ({$request->amount_paid} FCFA) insuffisant. Total dû : {$total} FCFA.", 422);
         }
 
-        DB::transaction(function () use ($request, $sale, $session, $saleType, $lineItems, $subtotal, $discountType, $discountValue, $total, $changeDue) {
+        // À partir d'ici, toutes les mutations (restitution, remplacement des articles,
+        // décompte, mise à jour de la vente) sont atomiques : soit tout s'applique, soit rien.
+        $alreadyValidated = false;
+
+        DB::transaction(function () use ($request, $sale, $session, $saleType, $lineItems, $subtotal, $discountType, $discountValue, $total, $changeDue, &$alreadyValidated) {
+            $locked = Sale::whereKey($sale->id)->lockForUpdate()->first();
+            if (!$locked || $locked->status !== 'en_attente') {
+                $alreadyValidated = true;
+                return;
+            }
+
             if ($lineItems !== null) {
+                foreach ($sale->items as $oldItem) {
+                    $oldItem->product?->stock?->increment('quantity', $oldItem->quantity);
+                }
+
                 $sale->items()->delete();
                 foreach ($lineItems as $line) {
                     SaleItem::create([
@@ -438,6 +454,10 @@ class SaleController extends Controller
                 'notes'               => $request->notes ?? $sale->notes,
             ]);
         });
+
+        if ($alreadyValidated) {
+            return $this->error('Cette vente n\'est plus en attente.', 422);
+        }
 
         activity_log($request->user()->id, 'validation_vente_attente', 'Sale', $sale->id, [
             'total' => $total,

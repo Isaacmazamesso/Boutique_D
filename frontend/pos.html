@@ -542,7 +542,7 @@ function loadPendingSaleIntoCart(saleId) {
     qty: i.quantity,
     unitPrice: i.unit_price,
   }));
-  discount = sale.discount_value > 0 ? { type: 'fixed', value: sale.discount_value } : { type: null, value: 0 };
+  discount = sale.discount_value > 0 ? { type: sale.discount_type, value: sale.discount_value } : { type: null, value: 0 };
   pendingSaleId = sale.id;
   document.getElementById('type-filter').value = sale.sale_type;
 
