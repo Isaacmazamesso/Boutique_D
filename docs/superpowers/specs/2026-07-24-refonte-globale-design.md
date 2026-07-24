@@ -53,6 +53,7 @@ Ordre — du plus utile au quotidien vers le plus structurel :
 | # | Module | Contenu |
 |---|--------|---------|
 | B1 | Reçus imprimables | Génération PDF (dompdf, déjà installé) avec nom du caissier ; feuille de style d'impression 80 mm pour ticket thermique via l'impression navigateur. |
+| B1b | Remboursement POS (UI) | Câbler le flux de remboursement sur l'endpoint existant `POST /sales/{id}/refund` (jamais exploité par l'UI — constaté lors de la Phase A). |
 | B2 | Exports rapports | Câblage PDF (dompdf) et Excel (fast-excel) sur les rapports existants. |
 | B3 | Prix en masse (Module 3.3) | Endpoint de modification en masse + UI dans Produits, avec traçabilité dans l'historique de prix existant. |
 | B4 | Paramètres système | Table `settings` + API + page Paramètres (seuils de remise, écart de caisse, etc.), accès admin. |
