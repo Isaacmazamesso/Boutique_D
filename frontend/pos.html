@@ -260,6 +260,10 @@
         <button class="btn btn-sm btn-outline hidden" id="btn-close-session">
           <i data-lucide="lock" class="icon"></i> Fermer
         </button>
+        <button class="btn" id="btn-pending-sales" onclick="openPendingSalesModal()">
+          <i data-lucide="clock" class="icon"></i> En attente
+          <span class="badge badge-accent hidden" id="pending-count-badge" style="margin-left:4px">0</span>
+        </button>
         <button class="btn" id="btn-refund" onclick="openRefundModal()"><i data-lucide="rotate-ccw" class="icon"></i> Remboursement</button>
       </div>
     </div>
@@ -455,6 +459,22 @@
   </div>
 </div>
 
+<!-- Modal ventes en attente -->
+<div class="modal-backdrop" id="pending-sales-modal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div class="modal-title"><i data-lucide="clock" class="icon"></i> Ventes en attente</div>
+      <button class="modal-close" data-dismiss><i data-lucide="x" class="icon"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="pending-sales-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" data-dismiss>Fermer</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script>
@@ -465,10 +485,82 @@ let cart = [];
 let discount = { type: null, value: 0 };
 let session = null;
 let refundSale = null;
+let pendingSaleId = null;
+let pendingSalesCache = [];
 
 async function init() {
-  await Promise.all([loadSession(), loadProducts(), loadCategories()]);
+  await Promise.all([loadSession(), loadProducts(), loadCategories(), loadPendingSales()]);
   bindEvents();
+}
+
+async function loadPendingSales() {
+  try {
+    pendingSalesCache = await api.get('/sales/pending');
+    const badge = document.getElementById('pending-count-badge');
+    if (pendingSalesCache.length > 0) {
+      badge.textContent = pendingSalesCache.length;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  } catch { /* silencieux : badge non critique */ }
+}
+
+function openPendingSalesModal() {
+  renderPendingSalesList();
+  openModal('pending-sales-modal');
+}
+
+function renderPendingSalesList() {
+  const container = document.getElementById('pending-sales-list');
+  if (!pendingSalesCache.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon-wrap"><i data-lucide="clock" class="icon"></i></div><h4>Aucune vente en attente</h4></div>';
+    refreshIcons();
+    return;
+  }
+  container.innerHTML = pendingSalesCache.map(s => `
+    <div class="flex justify-between items-center" style="padding:10px 0;border-bottom:1px solid var(--border-soft)">
+      <div>
+        <strong>${escHtml(s.vendor ?? 'Vendeur')}</strong>
+        <div class="text-muted font-sm">${s.items.length} article(s) — ${fmt(s.total)} — ${escHtml(s.date)}</div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-sm btn-primary" onclick="loadPendingSaleIntoCart(${s.id})"><i data-lucide="download" class="icon"></i> Charger</button>
+        <button class="btn btn-sm btn-ghost" onclick="cancelPendingSale(${s.id})"><i data-lucide="x" class="icon"></i></button>
+      </div>
+    </div>`).join('');
+  refreshIcons();
+}
+
+function loadPendingSaleIntoCart(saleId) {
+  const sale = pendingSalesCache.find(s => s.id === saleId);
+  if (!sale) return;
+  if (cart.length && !confirm('Le panier actuel sera remplacé par celui du vendeur. Continuer ?')) return;
+
+  cart = sale.items.map(i => ({
+    product: allProducts.find(p => p.id === i.product_id) || { id: i.product_id, name: i.product, unit: i.unit },
+    qty: i.quantity,
+    unitPrice: i.unit_price,
+  }));
+  discount = sale.discount_value > 0 ? { type: 'fixed', value: sale.discount_value } : { type: null, value: 0 };
+  pendingSaleId = sale.id;
+  document.getElementById('type-filter').value = sale.sale_type;
+
+  renderCart();
+  closeModal('pending-sales-modal');
+  toast(`Panier de ${sale.vendor ?? 'vendeur'} chargé — ${sale.items.length} article(s).`, 'success');
+}
+
+async function cancelPendingSale(saleId) {
+  if (!confirm('Annuler ce panier ? Le stock réservé sera restitué.')) return;
+  try {
+    await api.post(`/sales/${saleId}/cancel-pending`);
+    toast('Panier annulé.', 'success');
+    await loadPendingSales();
+    renderPendingSalesList();
+  } catch (err) {
+    toast(err.message, 'danger');
+  }
 }
 
 async function loadSession() {
@@ -732,13 +824,17 @@ async function processSale(total, subtotal, remise, method, saleType, amountPaid
   };
 
   try {
-    const sale = await api.post('/sales', body);
+    const sale = pendingSaleId
+      ? await api.post(`/sales/${pendingSaleId}/validate`, body)
+      : await api.post('/sales', body);
     closeModal('modal-payment');
     showReceipt(sale);
     cart = [];
     discount = { type: null, value: 0 };
+    pendingSaleId = null;
     renderCart();
     await loadProducts();
+    await loadPendingSales();
   } catch (err) {
     toast(err.message, 'danger');
     btn.disabled = false;
