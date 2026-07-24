@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SaleController;
+use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -121,5 +122,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('{user}/reset-password', [UserController::class, 'resetPassword']);
         Route::delete('{user}', [UserController::class, 'destroy']);
         Route::get('{user}/logs', [UserController::class, 'logs']);
+    });
+
+    // Paramètres système — propriétaire uniquement
+    Route::middleware('role:proprietaire')->prefix('settings')->group(function () {
+        Route::get('/', [SettingController::class, 'index']);
+        Route::put('/', [SettingController::class, 'update']);
     });
 });
