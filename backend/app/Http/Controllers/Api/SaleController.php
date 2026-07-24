@@ -163,6 +163,128 @@ class SaleController extends Controller
         );
     }
 
+    public function storePending(Request $request): JsonResponse
+    {
+        $request->validate([
+            'items'                  => 'required|array|min:1',
+            'items.*.product_id'     => 'required|exists:products,id',
+            'items.*.quantity'       => 'required|integer|min:1',
+            'sale_type'              => 'required|in:detail,gros',
+            'discount_type'          => 'nullable|in:percent,fixed',
+            'discount_value'         => 'nullable|integer|min:0',
+            'notes'                  => 'nullable|string',
+        ]);
+
+        // Charger les produits avec prix et stock
+        $productIds = collect($request->items)->pluck('product_id');
+        $products   = Product::with(['price', 'stock'])->whereIn('id', $productIds)->get()->keyBy('id');
+
+        $subtotal  = 0;
+        $lineItems = [];
+
+        foreach ($request->items as $item) {
+            $product = $products->get($item['product_id']);
+
+            if (!$product || !$product->is_active) {
+                return $this->error("Produit ID {$item['product_id']} indisponible.", 422);
+            }
+
+            $stockQty = $product->stock?->quantity ?? 0;
+            if ($stockQty < $item['quantity']) {
+                return $this->error(
+                    "Stock insuffisant pour \"{$product->name}\" : {$stockQty} disponible(s), {$item['quantity']} demandé(s).",
+                    422
+                );
+            }
+
+            $price = $product->price;
+            if ($request->sale_type === 'gros') {
+                if ($item['quantity'] < $price->wholesale_min_qty) {
+                    return $this->error(
+                        "\"{$product->name}\" nécessite min. {$price->wholesale_min_qty} unité(s) pour le prix gros.",
+                        422
+                    );
+                }
+                $unitPrice = $price->wholesale_price;
+            } else {
+                $unitPrice = $price->retail_price;
+            }
+
+            $lineTotal  = $unitPrice * $item['quantity'];
+            $subtotal  += $lineTotal;
+
+            $lineItems[] = [
+                'product'    => $product,
+                'quantity'   => $item['quantity'],
+                'unit_price' => $unitPrice,
+                'total'      => $lineTotal,
+            ];
+        }
+
+        $discountAmount = 0;
+        if ($request->discount_type && $request->discount_value > 0) {
+            $discountAmount = $request->discount_type === 'percent'
+                ? (int) round($subtotal * $request->discount_value / 100)
+                : $request->discount_value;
+
+            $seuilPct = (int) Setting::getValue('remise_max_sans_auth', 10);
+            $discountPct = ($subtotal > 0) ? ($discountAmount / $subtotal * 100) : 0;
+
+            if ($discountPct > $seuilPct && !$request->user()->hasRole('proprietaire')) {
+                return $this->error(
+                    "Remise de " . round($discountPct, 1) . "% dépasse le seuil autorisé ({$seuilPct}%). Autorisation du propriétaire requise.",
+                    403
+                );
+            }
+        }
+
+        $total = max(0, $subtotal - $discountAmount);
+
+        $sale = DB::transaction(function () use ($request, $lineItems, $subtotal, $discountAmount, $total) {
+            $sale = Sale::create([
+                'receipt_number'  => $this->generateReceiptNumber(),
+                'cashier_id'      => null,
+                'vendor_id'       => $request->user()->id,
+                'cash_session_id' => null,
+                'status'          => 'en_attente',
+                'sale_type'       => $request->sale_type,
+                'payment_method'  => null,
+                'subtotal'        => $subtotal,
+                'discount_type'   => $request->discount_type,
+                'discount_value'  => $request->discount_value ?? 0,
+                'total'           => $total,
+                'amount_paid'     => 0,
+                'change_given'    => 0,
+                'notes'           => $request->notes,
+            ]);
+
+            foreach ($lineItems as $line) {
+                SaleItem::create([
+                    'sale_id'    => $sale->id,
+                    'product_id' => $line['product']->id,
+                    'quantity'   => $line['quantity'],
+                    'unit_price' => $line['unit_price'],
+                    'total'      => $line['total'],
+                ]);
+
+                $line['product']->stock->decrement('quantity', $line['quantity']);
+            }
+
+            return $sale;
+        });
+
+        activity_log($request->user()->id, 'vente_en_attente', 'Sale', $sale->id, [
+            'total'          => $total,
+            'receipt_number' => $sale->receipt_number,
+        ]);
+
+        return $this->success(
+            $this->formatSale($sale->load(['items.product', 'vendor:id,name'])),
+            'Panier envoyé à la caisse.',
+            201
+        );
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = Sale::with(['cashier:id,name', 'items.product'])
@@ -326,6 +448,7 @@ class SaleController extends Controller
         return [
             'id'             => $sale->id,
             'receipt_number' => $sale->receipt_number,
+            'status'         => $sale->status,
             'sale_type'      => $sale->sale_type,
             'payment_method' => $sale->payment_method,
             'cashier'        => $sale->cashier?->name,
@@ -341,6 +464,7 @@ class SaleController extends Controller
             'items'          => $sale->relationLoaded('items')
                 ? $sale->items->map(fn($i) => [
                     'id'                => $i->id,
+                    'product_id'        => $i->product_id,
                     'product'           => $i->product?->name,
                     'unit'              => $i->product?->unit,
                     'quantity'          => $i->quantity,

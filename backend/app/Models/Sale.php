@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Sale extends Model
 {
     protected $fillable = [
-        'receipt_number', 'cashier_id', 'vendor_id', 'cash_session_id',
+        'receipt_number', 'cashier_id', 'vendor_id', 'cash_session_id', 'status',
         'sale_type', 'payment_method', 'mobile_money_number',
         'subtotal', 'discount_type', 'discount_value', 'total',
         'amount_paid', 'change_given', 'notes',

@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('sales')->group(function () {
         Route::get('/', [SaleController::class, 'index']);
         Route::post('/', [SaleController::class, 'store']);
+        Route::post('pending', [SaleController::class, 'storePending']);
         Route::get('receipt', [SaleController::class, 'findByReceipt']);
         Route::get('{sale}', [SaleController::class, 'show']);
         Route::get('{sale}/receipt-pdf', [SaleController::class, 'receiptPdf']);
