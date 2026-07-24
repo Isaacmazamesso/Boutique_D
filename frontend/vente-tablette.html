@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vente (tablette) — Boutique D</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563EB">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js" integrity="sha384-WBRt9V/J/erVtkEuP91HUFRv9MvHzFiFOp4/zTDp4xkcMG7aOeIv2asTV4yxFLWa" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    .vt-layout { display: grid; grid-template-columns: 1fr 340px; gap: 16px; height: calc(100dvh - var(--nav-h) - 32px); }
+    .vt-grid { overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; align-content: start; }
+    .vt-product { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; cursor: pointer; transition: border-color .15s, transform .1s; }
+    .vt-product:hover { border-color: var(--accent); }
+    .vt-product:active { transform: scale(.97); }
+    .vt-product .name { font-weight: 600; font-size: .85rem; margin-bottom: 4px; }
+    .vt-product .price { color: var(--accent); font-weight: 700; }
+    .vt-cart { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .vt-cart-items { flex: 1; overflow-y: auto; padding: 12px; }
+    @media (max-width: 900px) { .vt-layout { grid-template-columns: 1fr; height: auto; } }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="sidebar-overlay"></div>
+<div class="layout">
+  <header class="topbar">
+    <button class="topbar-menu-btn" id="menu-btn"><i data-lucide="menu" class="icon"></i></button>
+    <div class="topbar-brand">
+      <div class="brand-icon"><i data-lucide="shopping-bag" class="icon" style="width:15px;height:15px"></i></div>
+      Boutique D
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-user" id="topbar-user"></div>
+    <button class="btn btn-ghost btn-sm" id="btn-logout">
+      <i data-lucide="log-out" class="icon"></i> Déconnexion
+    </button>
+  </header>
+
+  <nav class="sidebar">
+    <div class="sidebar-section">Principal</div>
+    <a href="dashboard.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="nav-icon-wrap"><i data-lucide="layout-grid" class="icon"></i></span> <span class="nav-label">Dashboard</span>
+    </a>
+    <a href="pos.html" class="nav-item">
+      <span class="nav-icon-wrap"><i data-lucide="store" class="icon"></i></span> <span class="nav-label">Caisse (POS)</span>
+    </a>
+    <a href="vente-tablette.html" class="nav-item">
+      <span class="nav-icon-wrap"><i data-lucide="tablet-smartphone" class="icon"></i></span> <span class="nav-label">Vente (tablette)</span>
+    </a>
+    <div class="sidebar-section" data-role="proprietaire,gestionnaire">Stock</div>
+    <a href="stock.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="nav-icon-wrap"><i data-lucide="boxes" class="icon"></i></span> <span class="nav-label">Stock</span>
+      <span class="nav-badge hidden" id="alert-badge">0</span>
+    </a>
+    <a href="products.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="nav-icon-wrap"><i data-lucide="tag" class="icon"></i></span> <span class="nav-label">Produits</span>
+    </a>
+    <div class="sidebar-section" data-role="proprietaire">Gestion</div>
+    <a href="users.html" class="nav-item" data-role="proprietaire">
+      <span class="nav-icon-wrap"><i data-lucide="users" class="icon"></i></span> <span class="nav-label">Utilisateurs</span>
+    </a>
+    <a href="reports.html" class="nav-item" data-role="proprietaire">
+      <span class="nav-icon-wrap"><i data-lucide="chart-column" class="icon"></i></span> <span class="nav-label">Rapports</span>
+    </a>
+    <a href="settings.html" class="nav-item" data-role="proprietaire">
+      <span class="nav-icon-wrap"><i data-lucide="settings" class="icon"></i></span> <span class="nav-label">Paramètres</span>
+    </a>
+    <div class="sidebar-section">Compte</div>
+    <a href="profile.html" class="nav-item">
+      <span class="nav-icon-wrap"><i data-lucide="user" class="icon"></i></span> <span class="nav-label">Profil</span>
+    </a>
+  </nav>
+
+  <main class="main" style="overflow:hidden;padding:16px">
+    <div class="page-title" style="margin-bottom:14px">
+      <div class="page-icon" style="background:var(--accent)">
+        <i data-lucide="tablet-smartphone" class="icon"></i>
+      </div>
+      Vente (tablette)
+      <small>Préparez un panier, envoyez-le à la caisse</small>
+    </div>
+
+    <div class="vt-layout">
+      <div>
+        <div class="pos-search-bar" style="margin-bottom:12px">
+          <div style="position:relative;flex:1">
+            <i data-lucide="search" class="icon" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text-subtle);pointer-events:none"></i>
+            <input class="form-control" id="search" type="text" placeholder="Nom ou code-barres…" style="padding-left:38px">
+          </div>
+          <select class="form-control form-select" id="cat-filter" style="max-width:155px">
+            <option value="">Toutes catégories</option>
+          </select>
+          <select class="form-control form-select" id="type-filter" style="max-width:120px">
+            <option value="detail">Détail</option>
+            <option value="gros">Gros</option>
+          </select>
+        </div>
+        <div class="vt-grid" id="products-grid">
+          <div class="skeleton" style="height:80px;border-radius:10px"></div>
+          <div class="skeleton" style="height:80px;border-radius:10px"></div>
+          <div class="skeleton" style="height:80px;border-radius:10px"></div>
+          <div class="skeleton" style="height:80px;border-radius:10px"></div>
+        </div>
+      </div>
+
+      <div class="vt-cart">
+        <div class="cart-header">
+          <span class="cart-title">
+            <i data-lucide="shopping-cart" class="icon"></i> Panier
+            <span class="cart-count" id="cart-count">0</span>
+          </span>
+          <button class="btn btn-sm btn-ghost" id="btn-clear-cart" style="font-size:.8rem">
+            <i data-lucide="trash-2" class="icon"></i> Vider
+          </button>
+        </div>
+        <div class="vt-cart-items" id="cart-items">
+          <div class="empty-state">
+            <div class="icon-wrap"><i data-lucide="shopping-cart" class="icon"></i></div>
+            <h4>Panier vide</h4>
+            <span class="text-muted" style="font-size:.8rem">Touchez un produit pour l'ajouter</span>
+          </div>
+        </div>
+        <div class="cart-summary" id="cart-summary" style="display:none;padding:12px">
+          <div class="summary-line"><span class="text-muted">Sous-total</span><span id="s-subtotal">0 FCFA</span></div>
+          <div class="summary-total"><span>TOTAL</span><span id="s-total">0 FCFA</span></div>
+        </div>
+        <div style="padding:12px;border-top:1px solid var(--border-soft)">
+          <button class="btn btn-primary btn-block btn-lg" id="btn-send-to-cashier" disabled>
+            <i data-lucide="send" class="icon"></i> Envoyer à la caisse
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+requireAuth();
+
+let allProducts = [];
+let cart = [];
+
+async function init() {
+  await loadProducts();
+  await loadCategories();
+  bindEvents();
+}
+
+async function loadProducts() {
+  const grid = document.getElementById('products-grid');
+  try {
+    allProducts = await api.get('/products?is_active=1');
+    renderProducts();
+  } catch (err) {
+    toast(err.message, 'danger');
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon-wrap"><i data-lucide="triangle-alert" class="icon"></i></div><h4>Erreur de chargement</h4></div>';
+    refreshIcons();
+  }
+}
+
+async function loadCategories() {
+  try {
+    const cats = await api.get('/categories');
+    const select = document.getElementById('cat-filter');
+    cats.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      select.appendChild(opt);
+    });
+  } catch { /* silencieux : filtre non bloquant */ }
+}
+
+function getUnitPrice(product) {
+  const type = document.getElementById('type-filter').value;
+  return type === 'gros' ? (product.prices?.wholesale_price ?? product.prices?.retail_price ?? 0) : (product.prices?.retail_price ?? 0);
+}
+
+function renderProducts() {
+  const grid = document.getElementById('products-grid');
+  const query = document.getElementById('search').value.trim().toLowerCase();
+  const catId = document.getElementById('cat-filter').value;
+
+  const filtered = allProducts.filter(p => {
+    if (catId && String(p.category_id) !== catId) return false;
+    if (query && !p.name.toLowerCase().includes(query) && !(p.barcode ?? '').includes(query)) return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon-wrap"><i data-lucide="package" class="icon"></i></div><h4>Aucun produit</h4></div>';
+    refreshIcons();
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => `
+    <div class="vt-product" data-id="${p.id}">
+      <div class="name">${escHtml(p.name)}</div>
+      <div class="price">${fmt(getUnitPrice(p))}</div>
+      <div class="text-muted font-sm">${p.stock_quantity ?? 0} ${escHtml(p.unit)}</div>
+    </div>`).join('');
+
+  grid.querySelectorAll('.vt-product').forEach(el => {
+    el.addEventListener('click', () => addToCart(Number(el.dataset.id)));
+  });
+}
+
+function addToCart(productId) {
+  const product = allProducts.find(p => p.id === productId);
+  if (!product) return;
+  const maxQty = product.stock_quantity ?? 0;
+  const existing = cart.find(i => i.product.id === productId);
+  if (existing) {
+    if (existing.qty >= maxQty) { toast(`Stock maximum atteint (${maxQty} ${escHtml(product.unit)})`, 'warning'); return; }
+    existing.qty++;
+  } else {
+    if (maxQty <= 0) { toast('Produit en rupture de stock.', 'warning'); return; }
+    cart.push({ product, qty: 1, unitPrice: getUnitPrice(product) });
+  }
+  renderCart();
+}
+
+function removeFromCart(idx) { cart.splice(idx, 1); renderCart(); }
+
+function updateQty(idx, delta) {
+  const item = cart[idx];
+  const newQty = item.qty + delta;
+  const maxQty = item.product.stock_quantity ?? 0;
+  if (newQty <= 0) { removeFromCart(idx); return; }
+  if (newQty > maxQty) { toast(`Stock insuffisant (${maxQty} dispo)`, 'warning'); return; }
+  item.qty = newQty;
+  renderCart();
+}
+
+function renderCart() {
+  const container = document.getElementById('cart-items');
+  const summary    = document.getElementById('cart-summary');
+  const countEl    = document.getElementById('cart-count');
+  const sendBtn    = document.getElementById('btn-send-to-cashier');
+
+  countEl.textContent = cart.reduce((s, i) => s + i.qty, 0);
+
+  if (!cart.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon-wrap"><i data-lucide="shopping-cart" class="icon"></i></div><h4>Panier vide</h4><span class="text-muted" style="font-size:.8rem">Touchez un produit pour l\'ajouter</span></div>';
+    summary.style.display = 'none';
+    sendBtn.disabled = true;
+    refreshIcons();
+    return;
+  }
+
+  container.innerHTML = cart.map((item, idx) => `
+    <div class="cart-item">
+      <div>
+        <div class="cart-item-name">${escHtml(item.product.name)}</div>
+        <div class="cart-item-unit">${fmt(item.unitPrice)} / ${escHtml(item.product.unit)}</div>
+      </div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" data-action="dec" data-idx="${idx}">−</button>
+        <span class="qty-val">${item.qty}</span>
+        <button class="qty-btn" data-action="inc" data-idx="${idx}">+</button>
+      </div>
+      <div class="cart-item-total">${fmt(item.qty * item.unitPrice)}</div>
+      <span class="cart-item-del" data-del="${idx}"><i data-lucide="trash-2" class="icon"></i></span>
+    </div>`).join('');
+  refreshIcons();
+
+  container.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => updateQty(Number(btn.dataset.idx), btn.dataset.action === 'inc' ? 1 : -1));
+  });
+  container.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', () => removeFromCart(Number(btn.dataset.del)));
+  });
+
+  const subtotal = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0);
+  summary.style.display = 'block';
+  document.getElementById('s-subtotal').textContent = fmt(subtotal);
+  document.getElementById('s-total').textContent    = fmt(subtotal);
+  sendBtn.disabled = false;
+}
+
+async function sendToCashier() {
+  const btn = document.getElementById('btn-send-to-cashier');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-spinner"></span>';
+
+  const items = cart.map(i => ({ product_id: i.product.id, quantity: i.qty }));
+  const body = { sale_type: document.getElementById('type-filter').value, items };
+
+  try {
+    await api.post('/sales/pending', body);
+    toast('Panier envoyé à la caisse.', 'success');
+    cart = [];
+    renderCart();
+    await loadProducts();
+  } catch (err) {
+    toast(err.message, 'danger');
+  } finally {
+    btn.disabled = cart.length === 0;
+    btn.innerHTML = '<i data-lucide="send" class="icon"></i> Envoyer à la caisse';
+    refreshIcons();
+  }
+}
+
+function bindEvents() {
+  let searchTimer;
+  document.getElementById('search').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(renderProducts, 250);
+  });
+  document.getElementById('cat-filter').addEventListener('change', renderProducts);
+  document.getElementById('type-filter').addEventListener('change', () => {
+    cart.forEach(i => { i.unitPrice = getUnitPrice(i.product); });
+    renderProducts();
+    renderCart();
+  });
+  document.getElementById('btn-clear-cart').addEventListener('click', () => {
+    if (cart.length && !confirm('Vider le panier ?')) return;
+    cart = [];
+    renderCart();
+  });
+  document.getElementById('btn-send-to-cashier').addEventListener('click', sendToCashier);
+}
+
+init();
+</script>
+</body>
+</html>
