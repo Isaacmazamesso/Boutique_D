@@ -50,9 +50,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('dashboard', [DashboardController::class, 'index']);
         Route::prefix('reports')->group(function () {
             Route::get('sales', [ReportController::class, 'sales']);
+            Route::get('sales/pdf', [ReportController::class, 'salesPdf']);
+            Route::get('sales/excel', [ReportController::class, 'salesExcel']);
             Route::get('stock', [ReportController::class, 'stock']);
+            Route::get('stock/pdf', [ReportController::class, 'stockPdf']);
+            Route::get('stock/excel', [ReportController::class, 'stockExcel']);
             Route::get('treasury', [ReportController::class, 'treasury']);
+            Route::get('treasury/pdf', [ReportController::class, 'treasuryPdf']);
+            Route::get('treasury/excel', [ReportController::class, 'treasuryExcel']);
             Route::get('employees', [ReportController::class, 'employees']);
+            Route::get('employees/pdf', [ReportController::class, 'employeesPdf']);
+            Route::get('employees/excel', [ReportController::class, 'employeesExcel']);
         });
     });
 

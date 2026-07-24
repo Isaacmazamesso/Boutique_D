@@ -12,15 +12,53 @@ use App\Models\StockEntry;
 use App\Models\StockExit;
 use App\Models\Setting;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Rap2hpoutre\FastExcel\FastExcel;
 
 class ReportController extends Controller
 {
     // ── Rapport ventes ────────────────────────────────────────────────────────
 
     public function sales(Request $request): JsonResponse
+    {
+        return $this->success($this->computeSalesReport($request));
+    }
+
+    public function salesPdf(Request $request)
+    {
+        $data = $this->computeSalesReport($request);
+
+        return Pdf::loadView('reports.sales', $data)
+            ->stream('rapport-ventes-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function salesExcel(Request $request)
+    {
+        $data = $this->computeSalesReport($request);
+
+        $rows = collect($data['ventes'])->map(fn($v) => [
+            'N° Reçu'  => $v['receipt_number'],
+            'Date'     => $v['date'],
+            'Caissier' => $v['cashier'] ?? '—',
+            'Type'     => $v['sale_type'] === 'gros' ? 'Gros' : 'Détail',
+            'Paiement' => $v['payment_method'] === 'especes' ? 'Espèces' : 'Mobile Money',
+            'Articles' => $v['nb_articles'],
+            'Total'    => $v['total'],
+        ]);
+
+        $response = (new FastExcel($rows))->download('rapport-ventes-' . now()->format('Y-m-d') . '.xlsx');
+        // FastExcel/OpenSpout set le Content-Type via header() natif au moment du stream,
+        // ce qui n'apparaît pas dans le header bag de la Response (donc invisible en test HTTP) :
+        // on le fixe explicitement pour que le client (et les tests) le voient de façon fiable.
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        return $response;
+    }
+
+    private function computeSalesReport(Request $request): array
     {
         $request->validate([
             'period'         => 'nullable|in:today,week,month,custom',
@@ -65,7 +103,7 @@ class ReportController extends Controller
             $byPayment[$s->payment_method]['total'] += $s->total;
         }
 
-        return $this->success([
+        return [
             'periode'      => ['debut' => $start->format('d/m/Y'), 'fin' => $end->format('d/m/Y')],
             'resume' => [
                 'nb_ventes'    => $sales->count(),
@@ -84,13 +122,57 @@ class ReportController extends Controller
                 'payment_method' => $s->payment_method,
                 'total'          => $s->total,
                 'nb_articles'    => $s->items->sum('quantity'),
-            ]),
-        ]);
+            ])->toArray(),
+        ];
     }
 
     // ── Rapport stock ─────────────────────────────────────────────────────────
 
     public function stock(Request $request): JsonResponse
+    {
+        return $this->success($this->computeStockReport($request));
+    }
+
+    public function stockPdf(Request $request)
+    {
+        $data = $this->computeStockReport($request);
+
+        return Pdf::loadView('reports.stock', $data)
+            ->stream('rapport-stock-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function stockExcel(Request $request)
+    {
+        $data = $this->computeStockReport($request);
+
+        $entrees = collect($data['mouvements']['entrees'])->map(fn($e) => [
+            'Date'        => $e['date'],
+            'Produit'     => $e['product'],
+            'Quantité'    => $e['quantity'],
+            'Prix achat'  => $e['prix'],
+            'Fournisseur' => $e['fournisseur'] ?? '—',
+        ]);
+
+        $alertes = collect(array_merge(
+            array_map(fn($p) => ['Produit' => $p['name'], 'Catégorie' => $p['category'] ?? '—', 'Statut' => 'Rupture', 'Quantité' => 0, 'Seuil' => '—'], $data['alertes']['rupture']),
+            array_map(fn($p) => ['Produit' => $p['name'], 'Catégorie' => $p['category'] ?? '—', 'Statut' => 'Stock bas', 'Quantité' => $p['quantity'], 'Seuil' => $p['seuil']], $data['alertes']['stock_bas'])
+        ));
+
+        $sheets = new \Rap2hpoutre\FastExcel\SheetCollection([
+            'Entrées' => $entrees,
+            'Alertes' => $alertes,
+        ]);
+
+        $response = (new FastExcel($sheets))->download('rapport-stock-' . now()->format('Y-m-d') . '.xlsx');
+        // FastExcel/OpenSpout set le Content-Type via header() natif au moment du stream,
+        // ce qui n'apparaît pas dans le header bag de la Response (invisible en test HTTP) :
+        // on le fixe explicitement (confirmé nécessaire en B2-T1, vendor/rap2hpoutre/fast-excel/src/Exportable.php:78-88).
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        return $response;
+    }
+
+    private function computeStockReport(Request $request): array
     {
         $request->validate([
             'start_date' => 'nullable|date',
@@ -100,7 +182,6 @@ class ReportController extends Controller
         $start = $request->start_date ? now()->parse($request->start_date)->startOfDay() : today()->startOfMonth();
         $end   = $request->end_date   ? now()->parse($request->end_date)->endOfDay()     : now();
 
-        // Valeur du stock actuel
         $produits = Product::with(['price', 'stock', 'category'])
             ->where('is_active', true)
             ->get();
@@ -114,7 +195,6 @@ class ReportController extends Controller
             $valeurVente += $qty * ($p->price?->retail_price ?? 0);
         }
 
-        // Mouvements sur la période
         $entrees = StockEntry::whereBetween('created_at', [$start, $end])
             ->with('product:id,name')
             ->get();
@@ -123,11 +203,10 @@ class ReportController extends Controller
             ->with('product:id,name')
             ->get();
 
-        // Produits en rupture ou stock bas
         $rupture  = $produits->filter(fn($p) => $p->stockStatus() === 'rupture')->values();
         $stockBas = $produits->filter(fn($p) => $p->stockStatus() === 'bas')->values();
 
-        return $this->success([
+        return [
             'valeur_stock' => [
                 'achat'        => $valeurAchat,
                 'vente'        => $valeurVente,
@@ -148,28 +227,65 @@ class ReportController extends Controller
                     'quantity' => $e->quantity,
                     'prix'     => $e->purchase_price,
                     'fournisseur' => $e->supplier,
-                ]),
+                ])->toArray(),
                 'sorties_par_motif' => $sorties->groupBy('reason')->map(fn($g, $r) => [
                     'motif'    => $r,
                     'count'    => $g->count(),
                     'quantite' => $g->sum('quantity'),
-                ]),
+                ])->toArray(),
             ],
             'alertes' => [
-                'rupture'   => $rupture->map(fn($p) => ['name' => $p->name, 'category' => $p->category?->name]),
+                'rupture'   => $rupture->map(fn($p) => ['name' => $p->name, 'category' => $p->category?->name])->toArray(),
                 'stock_bas' => $stockBas->map(fn($p) => [
                     'name'     => $p->name,
                     'category' => $p->category?->name,
                     'quantity' => $p->stock?->quantity,
                     'seuil'    => $p->min_stock_alert,
-                ]),
+                ])->toArray(),
             ],
-        ]);
+        ];
     }
 
     // ── Rapport trésorerie ────────────────────────────────────────────────────
 
     public function treasury(Request $request): JsonResponse
+    {
+        return $this->success($this->computeTreasuryReport($request));
+    }
+
+    public function treasuryPdf(Request $request)
+    {
+        $data = $this->computeTreasuryReport($request);
+
+        return Pdf::loadView('reports.treasury', $data)
+            ->stream('rapport-tresorerie-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function treasuryExcel(Request $request)
+    {
+        $data = $this->computeTreasuryReport($request);
+
+        $rows = collect($data['sessions']['detail'])->map(fn($s) => [
+            'Caissier'       => $s['cashier'] ?? '—',
+            'Ouverture'      => $s['ouverture'],
+            'Fermeture'      => $s['fermeture'] ?? '—',
+            'Fonds départ'   => $s['fonds_depart'],
+            'Théorique'      => $s['theorique'] ?? '—',
+            'Saisi'          => $s['montant_saisi'] ?? '—',
+            'Écart'          => $s['ecart'] ?? '—',
+            'Statut'         => $s['statut'],
+        ]);
+
+        $response = (new FastExcel($rows))->download('rapport-tresorerie-' . now()->format('Y-m-d') . '.xlsx');
+        // FastExcel/OpenSpout set le Content-Type via header() natif au moment du stream,
+        // ce qui n'apparaît pas dans le header bag de la Response (invisible en test HTTP) :
+        // on le fixe explicitement (confirmé nécessaire en B2-T1, vendor/rap2hpoutre/fast-excel/src/Exportable.php:78-88).
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        return $response;
+    }
+
+    private function computeTreasuryReport(Request $request): array
     {
         [$start, $end] = $this->resolvePeriod($request);
 
@@ -192,7 +308,7 @@ class ReportController extends Controller
             !is_null($s->difference) && abs($s->difference) > $seuilCaisse
         );
 
-        return $this->success([
+        return [
             'periode'       => ['debut' => $start->format('d/m/Y'), 'fin' => $end->format('d/m/Y')],
             'encaissements' => [
                 'especes'        => $especes,
@@ -216,14 +332,51 @@ class ReportController extends Controller
                     'statut'       => $s->isOpen() ? 'ouverte' : (
                         abs($s->difference ?? 0) > $seuilCaisse ? 'ecart' : 'ok'
                     ),
-                ]),
+                ])->toArray(),
             ],
-        ]);
+        ];
     }
 
     // ── Rapport performance employés ──────────────────────────────────────────
 
     public function employees(Request $request): JsonResponse
+    {
+        return $this->success($this->computeEmployeesReport($request));
+    }
+
+    public function employeesPdf(Request $request)
+    {
+        $data = $this->computeEmployeesReport($request);
+
+        return Pdf::loadView('reports.employees', $data)
+            ->stream('rapport-employes-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function employeesExcel(Request $request)
+    {
+        $data = $this->computeEmployeesReport($request);
+
+        $rows = collect($data['employes'])->map(fn($e) => [
+            'Employé'          => $e['name'],
+            'Rôle'             => $e['role'],
+            'Ventes'           => $e['nb_ventes'],
+            'CA'               => $e['montant_vendu'],
+            'Panier moyen'     => $e['panier_moyen'],
+            'Remboursements'   => $e['nb_remboursements'],
+            'Sessions'         => $e['nb_sessions'],
+            'Heures'           => $e['heures_connexion'],
+        ]);
+
+        $response = (new FastExcel($rows))->download('rapport-employes-' . now()->format('Y-m-d') . '.xlsx');
+        // FastExcel/OpenSpout set le Content-Type via header() natif au moment du stream,
+        // ce qui n'apparaît pas dans le header bag de la Response (invisible en test HTTP) :
+        // on le fixe explicitement (confirmé nécessaire en B2-T1, vendor/rap2hpoutre/fast-excel/src/Exportable.php:78-88).
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        return $response;
+    }
+
+    private function computeEmployeesReport(Request $request): array
     {
         [$start, $end] = $this->resolvePeriod($request);
 
@@ -266,10 +419,10 @@ class ReportController extends Controller
             ];
         })->sortByDesc('montant_vendu')->values();
 
-        return $this->success([
+        return [
             'periode'  => ['debut' => $start->format('d/m/Y'), 'fin' => $end->format('d/m/Y')],
-            'employes' => $stats,
-        ]);
+            'employes' => $stats->toArray(),
+        ];
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

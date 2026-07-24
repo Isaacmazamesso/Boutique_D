@@ -163,6 +163,10 @@
           <div class="card-title">
             <i data-lucide="list" class="icon" style="color:var(--accent)"></i> Liste des ventes
           </div>
+          <div class="flex gap-2">
+            <button class="btn btn-sm" onclick="exportSales('pdf')"><i data-lucide="file-text" class="icon"></i> PDF</button>
+            <button class="btn btn-sm" onclick="exportSales('excel')"><i data-lucide="file-spreadsheet" class="icon"></i> Excel</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -200,6 +204,10 @@
           <div class="card-title">
             <i data-lucide="store" class="icon" style="color:var(--accent)"></i> Détail des sessions de caisse
           </div>
+          <div class="flex gap-2">
+            <button class="btn btn-sm" onclick="exportTreasury('pdf')"><i data-lucide="file-text" class="icon"></i> PDF</button>
+            <button class="btn btn-sm" onclick="exportTreasury('excel')"><i data-lucide="file-spreadsheet" class="icon"></i> Excel</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -222,6 +230,10 @@
     <!-- Stock -->
     <div class="tab-panel" id="tab-stock">
       <div class="kpi-grid mb-4" id="stock-kpis"></div>
+      <div class="flex gap-2 mb-4">
+        <button class="btn btn-sm" onclick="exportStock('pdf')"><i data-lucide="file-text" class="icon"></i> Export PDF</button>
+        <button class="btn btn-sm" onclick="exportStock('excel')"><i data-lucide="file-spreadsheet" class="icon"></i> Export Excel</button>
+      </div>
       <div class="grid grid-2 gap-4">
         <div class="card">
           <div class="card-header">
@@ -256,6 +268,10 @@
         <button class="btn btn-primary" id="btn-load-employees" style="align-self:flex-end">
           <i data-lucide="refresh-cw" class="icon"></i> Actualiser
         </button>
+      </div>
+      <div class="flex gap-2 mb-4">
+        <button class="btn btn-sm" onclick="exportEmployees('pdf')"><i data-lucide="file-text" class="icon"></i> Export PDF</button>
+        <button class="btn btn-sm" onclick="exportEmployees('excel')"><i data-lucide="file-spreadsheet" class="icon"></i> Export Excel</button>
       </div>
       <div class="card">
         <div class="table-wrap">
@@ -368,6 +384,21 @@ async function loadSales() {
   }
 }
 
+function exportSales(format) {
+  const period = document.getElementById('s-period').value;
+  const params = new URLSearchParams({ period });
+  if (period === 'custom') {
+    params.set('start_date', document.getElementById('s-start').value);
+    params.set('end_date',   document.getElementById('s-end').value);
+  }
+  const saleType  = document.getElementById('s-type').value;
+  const payMethod = document.getElementById('s-pay').value;
+  if (saleType)  params.set('sale_type', saleType);
+  if (payMethod) params.set('payment_method', payMethod);
+  const ext = format === 'pdf' ? 'pdf' : 'xlsx';
+  downloadFile(`${API_BASE}/reports/sales/${format}?${params}`, `rapport-ventes.${ext}`);
+}
+
 // ── Trésorerie ─────────────────────────────────────────────────────────────────
 async function loadTreasury() {
   const period = document.getElementById('t-period').value;
@@ -416,6 +447,12 @@ async function loadTreasury() {
     toast(err.message, 'danger');
     renderTable('treasury-tbody', [], 'Erreur de chargement', 'triangle-alert');
   }
+}
+
+function exportTreasury(format) {
+  const period = document.getElementById('t-period').value;
+  const ext = format === 'pdf' ? 'pdf' : 'xlsx';
+  downloadFile(`${API_BASE}/reports/treasury/${format}?period=${period}`, `rapport-tresorerie.${ext}`);
 }
 
 // ── Stock ──────────────────────────────────────────────────────────────────────
@@ -468,6 +505,11 @@ async function loadStockReport() {
   } catch (err) { toast(err.message, 'danger'); }
 }
 
+function exportStock(format) {
+  const ext = format === 'pdf' ? 'pdf' : 'xlsx';
+  downloadFile(`${API_BASE}/reports/stock/${format}`, `rapport-stock.${ext}`);
+}
+
 // ── Employés ───────────────────────────────────────────────────────────────────
 async function loadEmployees() {
   const period = document.getElementById('e-period').value;
@@ -496,6 +538,12 @@ async function loadEmployees() {
     toast(err.message, 'danger');
     renderTable('employees-tbody', [], 'Erreur de chargement', 'triangle-alert');
   }
+}
+
+function exportEmployees(format) {
+  const period = document.getElementById('e-period').value;
+  const ext = format === 'pdf' ? 'pdf' : 'xlsx';
+  downloadFile(`${API_BASE}/reports/employees/${format}?period=${period}`, `rapport-employes.${ext}`);
 }
 
 document.getElementById('btn-load-sales').addEventListener('click', loadSales);
