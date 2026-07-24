@@ -298,7 +298,7 @@ async function loadProducts(query = '') {
           <strong>${escHtml(p.name)}</strong>
           ${p.barcode ? `<br><span class="text-muted font-sm"><i data-lucide="scan-barcode" class="icon"></i> ${escHtml(p.barcode)}</span>` : ''}
         </td>
-        <td>${escHtml(p.category?.name ?? '—')}</td>
+        <td>${escHtml(p.category ?? '—')}</td>
         <td>${escHtml(p.unit)}</td>
         <td class="font-bold">${p.prices?.retail_price ? fmt(p.prices.retail_price) : '—'}</td>
         <td>${p.prices?.wholesale_price ? fmt(p.prices.wholesale_price) : '—'}</td>
