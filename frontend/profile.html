@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Profil — Boutique D</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#4f46e5">
+  <meta name="theme-color" content="#2563EB">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -147,6 +147,8 @@ document.getElementById('btn-change-pwd').addEventListener('click', async () => 
   if (pwd.length < 6) { toast('Le nouveau mot de passe doit faire au moins 6 caractères', 'warning'); return; }
   if (pwd !== confirm_) { toast('Les mots de passe ne correspondent pas', 'warning'); return; }
 
+  const btn = document.getElementById('btn-change-pwd');
+  btn.disabled = true;
   try {
     await api.put('/auth/password', {
       current_password: current,
@@ -156,6 +158,7 @@ document.getElementById('btn-change-pwd').addEventListener('click', async () => 
     toast('Mot de passe mis à jour', 'success');
     ['pwd-current', 'pwd-new', 'pwd-confirm'].forEach(id => document.getElementById(id).value = '');
   } catch (err) { toast(err.message, 'danger'); }
+  finally { btn.disabled = false; }
 });
 
 loadProfile();

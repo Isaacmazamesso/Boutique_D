@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Caisse (POS) — Boutique D</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#4f46e5">
+  <meta name="theme-color" content="#2563EB">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -249,7 +249,7 @@
       <div class="pos-left">
         <div class="pos-search-bar">
           <div style="position:relative;flex:1">
-            <i data-lucide="search" class="icon" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none"></i>
+            <i data-lucide="search" class="icon" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text-subtle);pointer-events:none"></i>
             <input class="form-control" id="search" type="text"
                    placeholder="Nom ou code-barres…" style="padding-left:38px">
           </div>
@@ -287,7 +287,7 @@
         <div class="cart-items" id="cart-items">
           <div class="empty-state">
             <div class="icon-wrap"><i data-lucide="shopping-cart" class="icon"></i></div>
-            <p>Panier vide</p>
+            <h4>Panier vide</h4>
             <span class="text-muted" style="font-size:.8rem">Scannez ou cliquez un produit</span>
           </div>
         </div>
@@ -367,7 +367,7 @@
 <div class="modal-backdrop" id="modal-discount">
   <div class="modal" style="max-width:360px">
     <div class="modal-header">
-      <span class="modal-title"><i data-lucide="percent" class="icon" style="color:#f59e0b"></i> Appliquer une remise</span>
+      <span class="modal-title"><i data-lucide="percent" class="icon" style="color:var(--warning)"></i> Appliquer une remise</span>
       <button class="modal-close" data-dismiss><i data-lucide="x" class="icon"></i></button>
     </div>
     <div class="modal-body">
@@ -553,7 +553,7 @@ function renderCart() {
   if (countEl) countEl.textContent = cart.reduce((s, i) => s + i.qty, 0);
 
   if (!cart.length) {
-    container.innerHTML = '<div class="empty-state"><div class="icon-wrap"><i data-lucide="shopping-cart" class="icon"></i></div><p>Panier vide</p><span class="text-muted" style="font-size:.8rem">Scannez ou cliquez un produit</span></div>';
+    container.innerHTML = '<div class="empty-state"><div class="icon-wrap"><i data-lucide="shopping-cart" class="icon"></i></div><h4>Panier vide</h4><span class="text-muted" style="font-size:.8rem">Scannez ou cliquez un produit</span></div>';
     summary.style.display = 'none';
     document.getElementById('btn-pay').disabled = true;
     refreshIcons();

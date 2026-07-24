@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rapports — Boutique D</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#4f46e5">
+  <meta name="theme-color" content="#2563EB">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -29,7 +29,7 @@
     .tab-btn.active {
       background: var(--accent);
       color: white;
-      box-shadow: 0 4px 10px rgba(79,70,229,.3);
+      box-shadow: 0 4px 10px rgba(37,99,235,.3);
     }
     .tab-btn:not(.active):hover { background: var(--bg); color: var(--text); }
     .tab-panel { display: none; }
@@ -478,7 +478,7 @@ async function loadEmployees() {
       <tr>
         <td>
           <div style="display:flex;align-items:center;gap:9px">
-            <div style="width:32px;height:32px;border-radius:8px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.82rem;flex-shrink:0">
+            <div style="width:32px;height:32px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.82rem;flex-shrink:0">
               ${escHtml(e.name.charAt(0).toUpperCase())}
             </div>
             <strong>${escHtml(e.name)}</strong>
