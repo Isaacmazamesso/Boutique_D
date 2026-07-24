@@ -104,9 +104,14 @@
         <div class="card-title">
           <i data-lucide="tag" class="icon" style="color:var(--accent)"></i> Produits
         </div>
-        <button class="btn btn-sm btn-primary" id="btn-add-product" data-role="proprietaire">
-          <i data-lucide="plus" class="icon"></i> Produit
-        </button>
+        <div class="flex gap-2">
+          <button class="btn btn-sm" id="btn-bulk-price" data-role="proprietaire" disabled>
+            <i data-lucide="percent" class="icon"></i> Modifier les prix (<span id="bulk-count">0</span>)
+          </button>
+          <button class="btn btn-sm btn-primary" id="btn-add-product" data-role="proprietaire">
+            <i data-lucide="plus" class="icon"></i> Produit
+          </button>
+        </div>
       </div>
       <div class="card-body" style="padding-bottom:0">
         <div class="products-toolbar">
@@ -128,6 +133,7 @@
         <table>
           <thead>
             <tr>
+              <th data-role="proprietaire" style="width:36px"><input type="checkbox" id="select-all-products"></th>
               <th>Nom</th>
               <th>Catégorie</th>
               <th>Unité</th>
@@ -281,8 +287,33 @@ async function loadCategories() {
   }
 }
 
+let selectedProductIds = new Set();
+
+function toggleProductSelect(id, checked) {
+  if (checked) selectedProductIds.add(id); else selectedProductIds.delete(id);
+  updateBulkButtonState();
+}
+
+function toggleSelectAll(checked) {
+  document.querySelectorAll('.product-select').forEach(cb => {
+    cb.checked = checked;
+    const id = Number(cb.dataset.id);
+    if (checked) selectedProductIds.add(id); else selectedProductIds.delete(id);
+  });
+  updateBulkButtonState();
+}
+
+function updateBulkButtonState() {
+  const btn = document.getElementById('btn-bulk-price');
+  document.getElementById('bulk-count').textContent = selectedProductIds.size;
+  btn.disabled = selectedProductIds.size === 0;
+}
+
 async function loadProducts(query = '') {
   showTableSkeleton('products-tbody', 6);
+  selectedProductIds.clear();
+  document.getElementById('select-all-products').checked = false;
+  updateBulkButtonState();
   try {
     const params = new URLSearchParams();
     if (query) params.set('search', query);
@@ -294,6 +325,7 @@ async function loadProducts(query = '') {
     products = await api.get(`/products?${params}`);
     renderTable('products-tbody', products.map(p => `
       <tr>
+        <td data-role="proprietaire"><input type="checkbox" class="product-select" data-id="${p.id}" ${selectedProductIds.has(p.id) ? 'checked' : ''}></td>
         <td>
           <strong>${escHtml(p.name)}</strong>
           ${p.barcode ? `<br><span class="text-muted font-sm"><i data-lucide="scan-barcode" class="icon"></i> ${escHtml(p.barcode)}</span>` : ''}
@@ -367,6 +399,12 @@ async function toggleProduct(id) {
 }
 
 function bindEvents() {
+  document.getElementById('select-all-products').addEventListener('change', e => toggleSelectAll(e.target.checked));
+  document.getElementById('products-tbody').addEventListener('change', e => {
+    if (e.target.classList.contains('product-select')) {
+      toggleProductSelect(Number(e.target.dataset.id), e.target.checked);
+    }
+  });
   let searchTimer;
   document.getElementById('product-search').addEventListener('input', e => {
     clearTimeout(searchTimer);
