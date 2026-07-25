@@ -477,6 +477,7 @@
 
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
+<script src="js/offline.js"></script>
 <script>
 requireAuth();
 
@@ -564,10 +565,18 @@ async function cancelPendingSale(saleId) {
 }
 
 async function loadSession() {
-  try {
-    session = await api.get('/cash-sessions/current');
-    updateSessionBanner();
-  } catch { session = null; updateSessionBanner(); }
+  if (navigator.onLine) {
+    try {
+      session = await api.get('/cash-sessions/current');
+      window.offlineCacheCatalog({ session });
+    } catch {
+      session = null;
+      window.offlineCacheCatalog({ session: null });
+    }
+  } else {
+    session = await window.offlineGetCachedSession();
+  }
+  updateSessionBanner();
 }
 
 function updateSessionBanner() {
@@ -598,27 +607,41 @@ async function loadProducts() {
   if (!grid.children.length || ![...grid.children].some(el => !el.classList.contains('skeleton'))) {
     grid.innerHTML = Array(8).fill('<div class="skeleton" style="height:92px;border-radius:12px"></div>').join('');
   }
-  try {
-    allProducts = await api.get('/products');
+  if (navigator.onLine) {
+    try {
+      allProducts = await api.get('/products');
+      renderProducts(allProducts);
+      window.offlineCacheCatalog({ products: allProducts });
+      return;
+    } catch (err) {
+      // Réseau tombé entre-temps : bascule sur le cache ci-dessous.
+    }
+  }
+  const cached = await window.offlineGetCachedProducts();
+  if (cached && cached.length) {
+    allProducts = cached;
     renderProducts(allProducts);
-  } catch (err) {
-    toast(err.message, 'danger');
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon-wrap"><i data-lucide="triangle-alert" class="icon"></i></div><h4>Erreur de chargement</h4></div>';
+  } else {
+    allProducts = [];
+    toast('Catalogue indisponible hors ligne. Ouvrez la caisse une fois en ligne pour le mettre en cache.', 'warning');
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon-wrap"><i data-lucide="wifi-off" class="icon"></i></div><h4>Catalogue indisponible hors ligne</h4></div>';
     refreshIcons();
   }
 }
 
 async function loadCategories() {
-  try {
-    const cats = await api.get('/categories');
-    const sel  = document.getElementById('cat-filter');
-    cats.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.name;
-      sel.appendChild(opt);
-    });
-  } catch {}
+  const sel = document.getElementById('cat-filter');
+  let cats = null;
+  if (navigator.onLine) {
+    try { cats = await api.get('/categories'); window.offlineCacheCatalog({ categories: cats }); } catch {}
+  }
+  if (!cats) cats = await window.offlineGetCachedCategories();
+  (cats || []).forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name;
+    sel.appendChild(opt);
+  });
 }
 
 function renderProducts(products) {
@@ -809,6 +832,43 @@ function openPayment() {
 }
 
 async function processSale(total, subtotal, remise, method, saleType, amountPaid, mobileNumber) {
+  if (!navigator.onLine) {
+    if (pendingSaleId) { toast('La validation d\'un panier vendeur nécessite une connexion.', 'warning'); return; }
+    const btnOff = document.getElementById('btn-confirm-pay');
+    btnOff.disabled = true;
+    const items = cart.map(i => ({ product_id: i.product.id, quantity: i.qty }));
+    const body = {
+      sale_type:   saleType,
+      payment_method: 'especes',
+      amount_paid: amountPaid ?? total,
+      items,
+      ...(discount.type ? { discount_type: discount.type, discount_value: discount.value } : {}),
+    };
+    const display = { items: cart.map(i => ({ name: i.product.name, qty: i.qty, total: i.qty * i.unitPrice })), total };
+    const syntheticSale = {
+      items: cart.map(i => ({ product: i.product.name, quantity: i.qty, total: i.qty * i.unitPrice })),
+      receipt_number: 'HORS-LIGNE — à synchroniser',
+      date: new Date().toLocaleString('fr-FR'),
+      cashier: currentUser().name,
+      subtotal, discount_value: remise, total,
+      payment_method: 'especes', amount_paid: amountPaid ?? total,
+      change_given: Math.max(0, (amountPaid ?? total) - total),
+    };
+    try {
+      await window.offlineSaveSale(body, display);
+      closeModal('modal-payment');
+      showOfflineReceipt(syntheticSale);
+      cart = [];
+      discount = { type: null, value: 0 };
+      renderCart();
+      await loadProducts();
+    } catch (err) {
+      toast('Impossible d\'enregistrer la vente hors ligne : ' + err.message, 'danger');
+      btnOff.disabled = false;
+    }
+    return;
+  }
+
   const btn = document.getElementById('btn-confirm-pay');
   btn.disabled = true;
   btn.innerHTML = '<span class="loading-spinner"></span>';
@@ -878,6 +938,42 @@ function showReceipt(sale) {
   openModal('modal-payment');
   refreshIcons();
   toast('Vente enregistrée avec succès !', 'success');
+}
+
+function showOfflineReceipt(sale) {
+  const lines = (sale.items || []).map(i =>
+    `<div class="receipt-row"><span>${escHtml(i.product)} × ${i.quantity}</span><span>${fmt(i.total)}</span></div>`
+  ).join('');
+
+  document.getElementById('payment-title').innerHTML = '<i data-lucide="receipt" class="icon"></i> Reçu (hors ligne)';
+  document.getElementById('payment-body').innerHTML = `
+    <div class="alert alert-warning mb-4"><i data-lucide="cloud-off" class="icon"></i>
+      <div>Vente enregistrée hors ligne — elle sera synchronisée au retour du réseau.</div></div>
+    <div class="receipt">
+      <h3><i data-lucide="shopping-bag" class="icon"></i> Boutique D</h3>
+      <div class="receipt-sub">${escHtml(sale.date ?? '')}</div>
+      <div class="receipt-sub">${escHtml(sale.receipt_number ?? '')}</div>
+      <div class="receipt-sub">Caissier : ${escHtml(sale.cashier ?? '—')}</div>
+      <hr>
+      ${lines}
+      <hr>
+      <div class="receipt-row"><span>Sous-total</span><span>${fmt(sale.subtotal)}</span></div>
+      ${sale.discount_value > 0 ? `<div class="receipt-row"><span>Remise</span><span>- ${fmt(sale.discount_value)}</span></div>` : ''}
+      <div class="receipt-row receipt-total"><span>TOTAL</span><span>${fmt(sale.total)}</span></div>
+      <hr>
+      <div class="receipt-row"><span>Paiement</span><span>Espèces</span></div>
+      ${sale.amount_paid ? `<div class="receipt-row"><span>Reçu</span><span>${fmt(sale.amount_paid)}</span></div>` : ''}
+      ${sale.change_given > 0 ? `<div class="receipt-row"><span>Monnaie rendue</span><span>${fmt(sale.change_given)}</span></div>` : ''}
+      <div class="receipt-footer">Merci pour votre achat !</div>
+    </div>`;
+  document.getElementById('payment-footer').innerHTML = `
+    <button class="btn btn-primary btn-block" data-dismiss>
+      <i data-lucide="check" class="icon"></i> Fermer
+    </button>`;
+  openModal('modal-payment');
+  refreshIcons();
+  document.querySelectorAll('#modal-payment [data-dismiss]').forEach(b =>
+    b.addEventListener('click', () => closeModal('modal-payment')));
 }
 
 async function openReceiptPdf(saleId) {
@@ -950,6 +1046,19 @@ async function submitRefund() {
   }
 }
 
+function updateOfflinePaymentUI() {
+  const sel = document.getElementById('payment-method');
+  const mm  = sel.querySelector('option[value="mobile_money"]');
+  if (!navigator.onLine) {
+    sel.value = 'especes';
+    mm.disabled = true;
+    mm.textContent = 'Mobile Money (indisponible hors ligne)';
+  } else {
+    mm.disabled = false;
+    mm.textContent = 'Mobile Money';
+  }
+}
+
 function bindEvents() {
   document.getElementById('search').addEventListener('input', filterProducts);
   document.getElementById('cat-filter').addEventListener('change', filterProducts);
@@ -1016,6 +1125,10 @@ function bindEvents() {
       toast('Caisse fermée', 'success');
     } catch (err) { toast(err.message, 'danger'); }
   });
+
+  window.addEventListener('online', updateOfflinePaymentUI);
+  window.addEventListener('offline', updateOfflinePaymentUI);
+  updateOfflinePaymentUI();
 }
 
 document.getElementById('btn-refund-search').addEventListener('click', searchRefundSale);
