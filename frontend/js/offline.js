@@ -77,10 +77,15 @@
     });
   }
 
+  function currentUserId() {
+    try { return JSON.parse(localStorage.getItem('user') || '{}').id ?? null; } catch (e) { return null; }
+  }
+
   async function offlineSaveSale(body, display) {
     const uuid = uuidV4();
     const entry = {
       uuid,
+      owner_id: currentUserId(),
       body: Object.assign({}, body, { uuid }),
       created_at: new Date().toISOString(),
       status: 'pending',
@@ -104,8 +109,9 @@
   // ── Moteur de synchronisation ─────────────────────────────────────────────
   async function syncPendingSales() {
     if (_syncing || !navigator.onLine) { await renderBanner(); return; }
+    const myId = currentUserId();
     const all = await pendingAll();
-    const queue = all.filter(e => e.status === 'pending').sort((a, b) => a.local_id - b.local_id);
+    const queue = all.filter(e => e.status === 'pending' && (e.owner_id == null || e.owner_id === myId)).sort((a, b) => a.local_id - b.local_id);
     if (!queue.length) { await renderBanner(); return; }
 
     _syncing = true;
@@ -324,7 +330,7 @@
 
   function init() {
     ensureUi();
-    recoverStaleSyncing().then(() => renderBanner());
+    recoverStaleSyncing().then(() => { renderBanner(); if (navigator.onLine) syncPendingSales(); });
     window.addEventListener('online', () => { renderBanner(); syncPendingSales(); });
     window.addEventListener('offline', () => renderBanner());
   }
