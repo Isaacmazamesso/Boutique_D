@@ -175,7 +175,7 @@ class SaleController extends Controller
         ]);
 
         return $this->success(
-            $this->formatSale($sale->load(['items.product', 'cashier:id,name']), collect()),
+            $this->formatSale($sale->load(['items.product', 'cashier:id,name', 'customer:id,name']), collect()),
             'Vente enregistrée.',
             201
         );
@@ -681,6 +681,7 @@ class SaleController extends Controller
             'payment_method' => $sale->payment_method,
             'cashier'        => $sale->cashier?->name,
             'vendor'         => $sale->vendor?->name,
+            'customer'       => $sale->customer?->name,
             'subtotal'       => $sale->subtotal,
             'discount_type'  => $sale->discount_type,
             'discount_value' => $sale->discount_value,
