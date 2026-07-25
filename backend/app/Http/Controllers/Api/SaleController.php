@@ -36,7 +36,9 @@ class SaleController extends Controller
 
         // Déduplication (synchro offline) : un rejeu du même UUID renvoie la vente déjà créée.
         if ($request->uuid) {
-            $existing = Sale::where('sync_uuid', $request->uuid)->first();
+            $existing = Sale::where('sync_uuid', $request->uuid)
+                ->where('cashier_id', $request->user()->id)
+                ->first();
             if ($existing) {
                 return $this->success(
                     $this->formatSale($existing->load(['items.product', 'cashier:id,name']), collect()),

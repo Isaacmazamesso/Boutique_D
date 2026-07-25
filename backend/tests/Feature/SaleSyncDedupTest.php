@@ -78,4 +78,25 @@ class SaleSyncDedupTest extends TestCase
         $response->assertCreated();
         $this->assertNull(Sale::first()->sync_uuid);
     }
+
+    public function test_deux_caissiers_avec_le_meme_uuid_creent_chacun_leur_vente(): void
+    {
+        $uuid = '33333333-3333-4333-8333-333333333333';
+        $product = $this->makeProduct(retail: 500, stockQty: 10);
+
+        $cashierA = $this->makeUser('caissier');
+        $this->openSession($cashierA);
+        Sanctum::actingAs($cashierA);
+        $this->postJson('/api/sales', $this->saleBody($product->id, $uuid))->assertCreated();
+
+        $cashierB = $this->makeUser('caissier');
+        $this->openSession($cashierB);
+        Sanctum::actingAs($cashierB);
+        // Même UUID mais autre caissier : ne doit PAS renvoyer la vente de A, doit creer celle de B.
+        $this->postJson('/api/sales', $this->saleBody($product->id, $uuid))->assertCreated();
+
+        $this->assertSame(2, \App\Models\Sale::count());
+        $this->assertSame(1, \App\Models\Sale::where('cashier_id', $cashierA->id)->count());
+        $this->assertSame(1, \App\Models\Sale::where('cashier_id', $cashierB->id)->count());
+    }
 }
