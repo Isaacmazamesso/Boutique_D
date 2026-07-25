@@ -32,6 +32,7 @@ class SaleController extends Controller
             'vendor_id'              => 'nullable|exists:users,id',
             'notes'                  => 'nullable|string',
             'uuid'                   => 'nullable|uuid',
+            'customer_id'            => 'nullable|exists:customers,id',
         ]);
 
         // Déduplication (synchro offline) : un rejeu du même UUID renvoie la vente déjà créée.
@@ -138,6 +139,7 @@ class SaleController extends Controller
                 'sync_uuid'        => $request->uuid,
                 'cashier_id'       => $request->user()->id,
                 'vendor_id'        => $request->vendor_id,
+                'customer_id'      => $request->customer_id,
                 'cash_session_id'  => $session?->id,
                 'sale_type'        => $request->sale_type,
                 'payment_method'   => $request->payment_method,
