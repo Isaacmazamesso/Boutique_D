@@ -31,7 +31,20 @@ class SaleController extends Controller
             'discount_value'         => 'nullable|integer|min:0',
             'vendor_id'              => 'nullable|exists:users,id',
             'notes'                  => 'nullable|string',
+            'uuid'                   => 'nullable|uuid',
         ]);
+
+        // Déduplication (synchro offline) : un rejeu du même UUID renvoie la vente déjà créée.
+        if ($request->uuid) {
+            $existing = Sale::where('sync_uuid', $request->uuid)->first();
+            if ($existing) {
+                return $this->success(
+                    $this->formatSale($existing->load(['items.product', 'cashier:id,name']), collect()),
+                    'Vente déjà enregistrée.',
+                    200
+                );
+            }
+        }
 
         // Session de caisse — requise pour les caissiers, optionnelle pour les autres
         $session = CashSession::where('cashier_id', $request->user()->id)
@@ -120,6 +133,7 @@ class SaleController extends Controller
         $sale = DB::transaction(function () use ($request, $session, $lineItems, $subtotal, $discountAmount, $total, $changeDue) {
             $sale = Sale::create([
                 'receipt_number'   => $this->generateReceiptNumber(),
+                'sync_uuid'        => $request->uuid,
                 'cashier_id'       => $request->user()->id,
                 'vendor_id'        => $request->vendor_id,
                 'cash_session_id'  => $session?->id,
