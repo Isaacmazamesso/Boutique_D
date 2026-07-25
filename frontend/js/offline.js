@@ -191,8 +191,8 @@
       return;
     }
     list.innerHTML = failed.map(e => {
-      const items = (e.display?.items || []).map(i => `${escapeHtml(i.name)} × ${i.qty}`).join(', ');
-      const total = e.display?.total ?? 0;
+      const items = (e.display?.items || []).map(i => `${escapeHtml(i.name)} × ${escapeHtml(i.qty)}`).join(', ');
+      const total = Number(e.display?.total ?? 0);
       return `<div class="offline-failed-row">
         <div>
           <div class="offline-failed-title">Vente locale #${e.local_id} — ${total.toLocaleString('fr-FR')} FCFA</div>
@@ -315,9 +315,16 @@
   }
 
   // ── Initialisation ────────────────────────────────────────────────────────
+  async function recoverStaleSyncing() {
+    const all = await pendingAll();
+    for (const e of all) {
+      if (e.status === 'syncing') { e.status = 'pending'; await pendingPut(e); }
+    }
+  }
+
   function init() {
     ensureUi();
-    renderBanner();
+    recoverStaleSyncing().then(() => renderBanner());
     window.addEventListener('online', () => { renderBanner(); syncPendingSales(); });
     window.addEventListener('offline', () => renderBanner());
   }
