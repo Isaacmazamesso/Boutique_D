@@ -85,4 +85,54 @@ class SaleWithCustomerTest extends TestCase
         $this->assertSame(1000, $data['total_depense']);
         $this->assertCount(1, $data['ventes']);
     }
+
+    public function test_validation_panier_en_attente_rattache_le_client(): void
+    {
+        $vendeur = $this->makeUser('vendeur');
+        $product = $this->makeProduct(retail: 500, stockQty: 20);
+        $customer = Customer::create(['name' => 'Client Comptoir', 'phone' => '770000012']);
+
+        Sanctum::actingAs($vendeur);
+        $sale = $this->postJson('/api/sales/pending', [
+            'items'     => [['product_id' => $product->id, 'quantity' => 2]],
+            'sale_type' => 'detail',
+        ])->json('data');
+
+        $cashier = $this->makeUser('caissier');
+        $this->openSession($cashier);
+        Sanctum::actingAs($cashier);
+        $response = $this->postJson("/api/sales/{$sale['id']}/validate", [
+            'payment_method' => 'especes',
+            'amount_paid'    => 1000,
+            'customer_id'    => $customer->id,
+        ]);
+
+        $response->assertOk();
+        $this->assertSame('Client Comptoir', $response->json('data.customer'));
+        $this->assertSame($customer->id, Sale::find($sale['id'])->customer_id);
+    }
+
+    public function test_validation_panier_en_attente_sans_client_reste_anonyme(): void
+    {
+        $vendeur = $this->makeUser('vendeur');
+        $product = $this->makeProduct(retail: 500, stockQty: 20);
+
+        Sanctum::actingAs($vendeur);
+        $sale = $this->postJson('/api/sales/pending', [
+            'items'     => [['product_id' => $product->id, 'quantity' => 2]],
+            'sale_type' => 'detail',
+        ])->json('data');
+
+        $cashier = $this->makeUser('caissier');
+        $this->openSession($cashier);
+        Sanctum::actingAs($cashier);
+        $response = $this->postJson("/api/sales/{$sale['id']}/validate", [
+            'payment_method' => 'especes',
+            'amount_paid'    => 1000,
+        ]);
+
+        $response->assertOk();
+        $this->assertNull($response->json('data.customer'));
+        $this->assertNull(Sale::find($sale['id'])->customer_id);
+    }
 }

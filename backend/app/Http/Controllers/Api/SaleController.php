@@ -330,6 +330,7 @@ class SaleController extends Controller
             'discount_type'          => 'nullable|in:percent,fixed',
             'discount_value'         => 'nullable|integer|min:0',
             'notes'                  => 'nullable|string',
+            'customer_id'            => 'nullable|exists:customers,id',
         ]);
 
         $session = CashSession::where('cashier_id', $request->user()->id)
@@ -470,6 +471,7 @@ class SaleController extends Controller
                 'amount_paid'         => $request->amount_paid,
                 'change_given'        => $changeDue,
                 'notes'               => $request->notes ?? $sale->notes,
+                'customer_id'         => $request->customer_id ?? $sale->customer_id,
             ]);
         });
 
@@ -482,7 +484,7 @@ class SaleController extends Controller
         ]);
 
         return $this->success(
-            $this->formatSale($sale->fresh()->load(['items.product', 'cashier:id,name', 'vendor:id,name'])),
+            $this->formatSale($sale->fresh()->load(['items.product', 'cashier:id,name', 'vendor:id,name', 'customer:id,name'])),
             'Vente validée.'
         );
     }

@@ -1176,12 +1176,14 @@ async function searchCustomers(term) {
   try {
     const list = await api.get(`/customers?search=${encodeURIComponent(term.trim())}`);
     box.innerHTML = list.slice(0, 6).map(c => `
-      <div class="customer-result" data-id="${c.id}" data-name="${escHtml(c.name)}" style="padding:6px 8px;cursor:pointer;border-radius:6px;font-size:.82rem">
+      <div class="customer-result" data-id="${c.id}" style="padding:6px 8px;cursor:pointer;border-radius:6px;font-size:.82rem">
         ${escHtml(c.name)} <span class="text-muted">· ${escHtml(c.phone)}</span>
       </div>`).join('') || '<div class="text-muted font-sm" style="padding:6px 8px">Aucun client — cliquez + pour en créer un</div>';
     box.querySelectorAll('.customer-result').forEach(el => {
       el.addEventListener('click', () => {
-        selectedCustomer = { id: Number(el.dataset.id), name: el.dataset.name };
+        const c = list.find(x => x.id === Number(el.dataset.id));
+        if (!c) return;
+        selectedCustomer = { id: c.id, name: c.name };
         document.getElementById('customer-search').value = '';
         renderCustomerField();
       });
