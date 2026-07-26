@@ -31,7 +31,7 @@ class CustomerController extends Controller
             'name'  => 'required|string|max:150',
             'phone' => 'required|string|max:30|unique:customers,phone',
             'note'  => 'nullable|string',
-        ]);
+        ], self::validationMessages());
 
         $customer = Customer::create($request->only(['name', 'phone', 'note']));
 
@@ -70,7 +70,7 @@ class CustomerController extends Controller
             'name'  => 'sometimes|string|max:150',
             'phone' => ['sometimes', 'string', 'max:30', Rule::unique('customers', 'phone')->ignore($customer->id)],
             'note'  => 'nullable|string',
-        ]);
+        ], self::validationMessages());
 
         $customer->update($request->only(['name', 'phone', 'note']));
 
@@ -94,6 +94,17 @@ class CustomerController extends Controller
         $customer->delete();
 
         return $this->success(null, 'Client supprimé.');
+    }
+
+    private static function validationMessages(): array
+    {
+        return [
+            'name.required'  => 'Le nom du client est obligatoire.',
+            'name.max'       => 'Le nom ne peut pas dépasser 150 caractères.',
+            'phone.required' => 'Le téléphone est obligatoire.',
+            'phone.unique'   => 'Ce numéro de téléphone est déjà enregistré pour un autre client.',
+            'phone.max'      => 'Le téléphone ne peut pas dépasser 30 caractères.',
+        ];
     }
 
     private function formatCustomer(Customer $customer): array

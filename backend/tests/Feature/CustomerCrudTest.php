@@ -33,7 +33,8 @@ class CustomerCrudTest extends TestCase
 
         Sanctum::actingAs($gestionnaire);
         $this->postJson('/api/customers', ['name' => 'Autre', 'phone' => '770000002'])
-            ->assertStatus(422);
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Ce numéro de téléphone est déjà enregistré pour un autre client.');
     }
 
     public function test_un_caissier_peut_creer_mais_pas_lister(): void
