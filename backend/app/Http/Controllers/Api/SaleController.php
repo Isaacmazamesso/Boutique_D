@@ -32,6 +32,7 @@ class SaleController extends Controller
             'vendor_id'              => 'nullable|exists:users,id',
             'notes'                  => 'nullable|string',
             'uuid'                   => 'nullable|uuid',
+            'customer_id'            => 'nullable|exists:customers,id',
         ]);
 
         // Déduplication (synchro offline) : un rejeu du même UUID renvoie la vente déjà créée.
@@ -138,6 +139,7 @@ class SaleController extends Controller
                 'sync_uuid'        => $request->uuid,
                 'cashier_id'       => $request->user()->id,
                 'vendor_id'        => $request->vendor_id,
+                'customer_id'      => $request->customer_id,
                 'cash_session_id'  => $session?->id,
                 'sale_type'        => $request->sale_type,
                 'payment_method'   => $request->payment_method,
@@ -173,7 +175,7 @@ class SaleController extends Controller
         ]);
 
         return $this->success(
-            $this->formatSale($sale->load(['items.product', 'cashier:id,name']), collect()),
+            $this->formatSale($sale->load(['items.product', 'cashier:id,name', 'customer:id,name']), collect()),
             'Vente enregistrée.',
             201
         );
@@ -328,6 +330,7 @@ class SaleController extends Controller
             'discount_type'          => 'nullable|in:percent,fixed',
             'discount_value'         => 'nullable|integer|min:0',
             'notes'                  => 'nullable|string',
+            'customer_id'            => 'nullable|exists:customers,id',
         ]);
 
         $session = CashSession::where('cashier_id', $request->user()->id)
@@ -468,6 +471,7 @@ class SaleController extends Controller
                 'amount_paid'         => $request->amount_paid,
                 'change_given'        => $changeDue,
                 'notes'               => $request->notes ?? $sale->notes,
+                'customer_id'         => $request->customer_id ?? $sale->customer_id,
             ]);
         });
 
@@ -480,7 +484,7 @@ class SaleController extends Controller
         ]);
 
         return $this->success(
-            $this->formatSale($sale->fresh()->load(['items.product', 'cashier:id,name', 'vendor:id,name'])),
+            $this->formatSale($sale->fresh()->load(['items.product', 'cashier:id,name', 'vendor:id,name', 'customer:id,name'])),
             'Vente validée.'
         );
     }
@@ -679,6 +683,7 @@ class SaleController extends Controller
             'payment_method' => $sale->payment_method,
             'cashier'        => $sale->cashier?->name,
             'vendor'         => $sale->vendor?->name,
+            'customer'       => $sale->customer?->name,
             'subtotal'       => $sale->subtotal,
             'discount_type'  => $sale->discount_type,
             'discount_value' => $sale->discount_value,

@@ -233,7 +233,10 @@
     <a href="products.html" class="nav-item" data-role="proprietaire,gestionnaire">
       <span class="nav-icon-wrap"><i data-lucide="tag" class="icon"></i></span> <span class="nav-label">Produits</span>
     </a>
-    <div class="sidebar-section" data-role="proprietaire">Gestion</div>
+    <div class="sidebar-section" data-role="proprietaire,gestionnaire">Gestion</div>
+    <a href="clients.html" class="nav-item" data-role="proprietaire,gestionnaire">
+      <span class="nav-icon-wrap"><i data-lucide="contact" class="icon"></i></span> <span class="nav-label">Clients</span>
+    </a>
     <a href="users.html" class="nav-item" data-role="proprietaire">
       <span class="nav-icon-wrap"><i data-lucide="users" class="icon"></i></span> <span class="nav-label">Utilisateurs</span>
     </a>
@@ -307,6 +310,18 @@
           <button class="btn btn-sm btn-ghost" id="btn-clear-cart" style="font-size:.8rem">
             <i data-lucide="trash-2" class="icon"></i> Vider
           </button>
+        </div>
+        <div class="cart-customer" id="cart-customer" style="padding:8px 12px;border-bottom:1px solid var(--border-soft)">
+          <div id="customer-none" class="flex items-center gap-2">
+            <i data-lucide="user" class="icon" style="color:var(--text-subtle)"></i>
+            <input class="form-control" id="customer-search" placeholder="Client (optionnel)…" style="height:32px;font-size:.82rem;flex:1">
+            <button class="btn btn-sm" id="btn-new-customer" title="Nouveau client"><i data-lucide="user-plus" class="icon"></i></button>
+          </div>
+          <div id="customer-results" style="max-height:120px;overflow-y:auto"></div>
+          <div id="customer-selected" class="hidden flex items-center justify-between" style="background:var(--accent-soft);border-radius:8px;padding:5px 10px">
+            <span class="font-sm font-bold" id="customer-selected-name"></span>
+            <button class="btn btn-ghost btn-sm" id="btn-clear-customer"><i data-lucide="x" class="icon"></i></button>
+          </div>
         </div>
         <div class="cart-items" id="cart-items">
           <div class="empty-state">
@@ -881,6 +896,7 @@ async function processSale(total, subtotal, remise, method, saleType, amountPaid
     items,
     ...(mobileNumber ? { mobile_money_number: mobileNumber } : {}),
     ...(discount.type ? { discount_type: discount.type, discount_value: discount.value } : {}),
+    ...(selectedCustomer ? { customer_id: selectedCustomer.id } : {}),
   };
 
   try {
@@ -892,6 +908,8 @@ async function processSale(total, subtotal, remise, method, saleType, amountPaid
     cart = [];
     discount = { type: null, value: 0 };
     pendingSaleId = null;
+    selectedCustomer = null;
+    renderCustomerField();
     renderCart();
     await loadProducts();
     await loadPendingSales();
@@ -1134,6 +1152,68 @@ function bindEvents() {
 document.getElementById('btn-refund-search').addEventListener('click', searchRefundSale);
 document.getElementById('refund-receipt-input').addEventListener('keydown', e => { if (e.key === 'Enter') searchRefundSale(); });
 document.getElementById('btn-refund-submit').addEventListener('click', submitRefund);
+
+let selectedCustomer = null;
+
+function renderCustomerField() {
+  const none = document.getElementById('customer-none');
+  const sel  = document.getElementById('customer-selected');
+  if (selectedCustomer) {
+    none.classList.add('hidden');
+    document.getElementById('customer-results').innerHTML = '';
+    sel.classList.remove('hidden');
+    document.getElementById('customer-selected-name').textContent = selectedCustomer.name;
+  } else {
+    none.classList.remove('hidden');
+    sel.classList.add('hidden');
+  }
+  refreshIcons();
+}
+
+async function searchCustomers(term) {
+  const box = document.getElementById('customer-results');
+  if (!term.trim()) { box.innerHTML = ''; return; }
+  try {
+    const list = await api.get(`/customers?search=${encodeURIComponent(term.trim())}`);
+    box.innerHTML = list.slice(0, 6).map(c => `
+      <div class="customer-result" data-id="${c.id}" style="padding:6px 8px;cursor:pointer;border-radius:6px;font-size:.82rem">
+        ${escHtml(c.name)} <span class="text-muted">· ${escHtml(c.phone)}</span>
+      </div>`).join('') || '<div class="text-muted font-sm" style="padding:6px 8px">Aucun client — cliquez + pour en créer un</div>';
+    box.querySelectorAll('.customer-result').forEach(el => {
+      el.addEventListener('click', () => {
+        const c = list.find(x => x.id === Number(el.dataset.id));
+        if (!c) return;
+        selectedCustomer = { id: c.id, name: c.name };
+        document.getElementById('customer-search').value = '';
+        renderCustomerField();
+      });
+    });
+  } catch { /* silencieux : le champ client est optionnel */ }
+}
+
+async function createCustomerInline() {
+  const name = prompt('Nom du client :');
+  if (!name || !name.trim()) return;
+  const phone = prompt('Téléphone :');
+  if (!phone || !phone.trim()) return;
+  try {
+    const c = await api.post('/customers', { name: name.trim(), phone: phone.trim() });
+    selectedCustomer = { id: c.id, name: c.name };
+    document.getElementById('customer-search').value = '';
+    renderCustomerField();
+    toast('Client créé et rattaché.', 'success');
+  } catch (err) {
+    toast(err.message, 'danger');
+  }
+}
+
+document.getElementById('btn-new-customer').addEventListener('click', createCustomerInline);
+document.getElementById('btn-clear-customer').addEventListener('click', () => { selectedCustomer = null; renderCustomerField(); });
+let custTimer;
+document.getElementById('customer-search').addEventListener('input', e => {
+  clearTimeout(custTimer);
+  custTimer = setTimeout(() => searchCustomers(e.target.value), 300);
+});
 
 init();
 </script>

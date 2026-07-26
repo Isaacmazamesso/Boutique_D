@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\ProductController;
@@ -126,6 +127,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('{user}/reset-password', [UserController::class, 'resetPassword']);
         Route::delete('{user}', [UserController::class, 'destroy']);
         Route::get('{user}/logs', [UserController::class, 'logs']);
+    });
+
+    // Clients — gestion : proprietaire + gestionnaire ; creation ouverte au caissier (saisie a la volee)
+    Route::prefix('customers')->group(function () {
+        Route::post('/', [CustomerController::class, 'store'])->middleware('role:proprietaire|gestionnaire|caissier');
+        Route::middleware('role:proprietaire|gestionnaire')->group(function () {
+            Route::get('/', [CustomerController::class, 'index']);
+            Route::get('{customer}', [CustomerController::class, 'show']);
+            Route::put('{customer}', [CustomerController::class, 'update']);
+            Route::delete('{customer}', [CustomerController::class, 'destroy']);
+        });
     });
 
     // Paramètres système — propriétaire uniquement
