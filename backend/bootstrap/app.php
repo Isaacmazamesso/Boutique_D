@@ -14,7 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'role'             => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'session.timeout'  => \App\Http\Middleware\CheckSessionTimeout::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

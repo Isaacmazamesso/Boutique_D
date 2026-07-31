@@ -4,8 +4,8 @@
   "description": "Gestion digitale de la boutique d'alimentation",
   "start_url": "/login.html",
   "display": "standalone",
-  "background_color": "#1B4332",
-  "theme_color": "#2D6A4F",
+  "background_color": "#FFFFFF",
+  "theme_color": "#2563EB",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },

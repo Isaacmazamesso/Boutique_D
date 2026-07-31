@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -61,14 +62,18 @@ class AuthController extends Controller
         ]);
 
         return $this->success([
-            'token' => $token,
-            'user'  => $this->formatUser($user),
+            'token'                   => $token,
+            'user'                    => $this->formatUser($user),
+            'session_timeout_minutes' => (int) Setting::getValue('inactivite_max_minutes', 30),
         ], 'Connexion réussie.');
     }
 
     public function me(Request $request): JsonResponse
     {
-        return $this->success($this->formatUser($request->user()));
+        return $this->success([
+            ...$this->formatUser($request->user()),
+            'session_timeout_minutes' => (int) Setting::getValue('inactivite_max_minutes', 30),
+        ]);
     }
 
     public function logout(Request $request): JsonResponse

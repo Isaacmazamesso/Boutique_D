@@ -50,6 +50,14 @@ class SettingController extends Controller
             'min'         => 0,
             'max'         => null,
         ],
+        'inactivite_max_minutes' => [
+            'label'       => "Délai d'inactivité avant déconnexion",
+            'description' => "Après cette durée sans action, la session d'un employé est fermée automatiquement et une reconnexion est nécessaire.",
+            'unit'        => 'minutes',
+            'default'     => 30,
+            'min'         => 5,
+            'max'         => 480,
+        ],
     ];
 
     public function index(): JsonResponse

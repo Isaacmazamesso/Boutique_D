@@ -241,6 +241,21 @@
     const errEl = document.getElementById('err');
     const btnEl = document.getElementById('btn-login');
 
+    const flashMsg = sessionStorage.getItem('flash_message');
+    if (flashMsg) {
+      sessionStorage.removeItem('flash_message');
+      const icon = document.createElement('i');
+      icon.setAttribute('data-lucide', 'circle-alert');
+      icon.className = 'icon';
+      const msg = document.createElement('span');
+      msg.textContent = flashMsg;
+      errEl.innerHTML = '';
+      errEl.appendChild(icon);
+      errEl.appendChild(msg);
+      errEl.style.display = 'flex';
+      refreshIcons();
+    }
+
     document.getElementById('toggle-pwd').addEventListener('click', () => {
       const pwd  = document.getElementById('password');
       const icon = document.getElementById('toggle-icon');
@@ -267,6 +282,7 @@
           name: data.user.name,
           role: data.user.role,
         }));
+        localStorage.setItem('session_timeout_minutes', String(data.session_timeout_minutes ?? 30));
         window.location.href = data.user.role === 'caissier' ? 'pos.html' : 'dashboard.html';
       } catch (err) {
         errEl.innerHTML = '';

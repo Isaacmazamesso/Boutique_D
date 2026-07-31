@@ -53,7 +53,32 @@ function sparklineSvg(values, opts = {}) {
 function requireAuth() {
   const token = localStorage.getItem('token');
   if (!token) { window.location.href = 'login.html'; return null; }
+  startInactivityWatch();
   return JSON.parse(localStorage.getItem('user') || '{}');
+}
+
+// ── Déconnexion automatique après inactivité ────────────────────────────────
+function startInactivityWatch() {
+  const timeoutMinutes = Number(localStorage.getItem('session_timeout_minutes')) || 30;
+  let timer;
+
+  const onTimeout = () => {
+    api.post('/auth/logout').catch(() => {});
+    sessionStorage.setItem('flash_message', 'Session fermée après une période d\'inactivité.');
+    localStorage.clear();
+    window.location.href = 'login.html';
+  };
+
+  const resetTimer = () => {
+    clearTimeout(timer);
+    timer = setTimeout(onTimeout, timeoutMinutes * 60 * 1000);
+  };
+
+  ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll'].forEach(evt =>
+    document.addEventListener(evt, resetTimer, { passive: true })
+  );
+
+  resetTimer();
 }
 
 function currentUser() {
@@ -213,7 +238,8 @@ function initModals() {
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 function fmt(amount) {
-  return new Intl.NumberFormat('fr-FR').format(Math.round(amount)) + ' FCFA';
+  const n = Number(amount);
+  return new Intl.NumberFormat('fr-FR').format(Number.isFinite(n) ? Math.round(n) : 0) + ' FCFA';
 }
 function fmtDate(str) {
   if (!str) return '—';

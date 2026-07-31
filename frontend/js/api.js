@@ -27,6 +27,7 @@ const api = {
       }
       // Auth expired
       if (res.status === 401) {
+        sessionStorage.setItem('flash_message', json.message || 'Session expirée. Veuillez vous reconnecter.');
         localStorage.clear();
         window.location.href = 'login.html';
         return;

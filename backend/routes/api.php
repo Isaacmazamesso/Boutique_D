@@ -20,7 +20,7 @@ Route::prefix('auth')->group(function () {
 });
 
 // Routes protégées (token requis)
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['session.timeout', 'auth:sanctum'])->group(function () {
 
     // Auth
     Route::prefix('auth')->group(function () {

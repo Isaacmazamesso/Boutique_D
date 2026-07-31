@@ -603,7 +603,7 @@ function updateSessionBanner() {
 
   if (session) {
     banner.className = 'session-banner open';
-    info.innerHTML = `<i data-lucide="circle-check-big" class="icon"></i> Caisse ouverte depuis ${escHtml(session.opened_at)} — Fonds : ${fmt(session.opening_amount)}`;
+    info.innerHTML = `<i data-lucide="circle-check-big" class="icon"></i> Caisse ouverte depuis ${escHtml(fmtDate(session.opened_at))} — Fonds : ${fmt(session.opening_amount)}`;
     btnOpen.classList.add('hidden');
     btnClose.classList.remove('hidden');
     btnPay.disabled = cart.length === 0;
