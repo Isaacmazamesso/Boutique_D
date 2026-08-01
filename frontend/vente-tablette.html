@@ -298,8 +298,11 @@ async function sendToCashier() {
   const body = { sale_type: document.getElementById('type-filter').value, items };
 
   try {
-    await api.post('/sales/pending', body);
+    const sale = await api.post('/sales/pending', body);
     toast('Panier envoyé à la caisse.', 'success');
+    if (sale.price_warnings?.length) {
+      toast(sale.price_warnings.join(' '), 'warning', 6000);
+    }
     cart = [];
     renderCart();
     await loadProducts();

@@ -65,6 +65,7 @@ class SaleController extends Controller
         // Vérifications stock + calcul du sous-total
         $subtotal = 0;
         $lineItems = [];
+        $priceWarnings = [];
 
         foreach ($request->items as $item) {
             $product = $products->get($item['product_id']);
@@ -81,19 +82,8 @@ class SaleController extends Controller
                 );
             }
 
-            // Déterminer le prix selon le type de vente
-            $price = $product->price;
-            if ($request->sale_type === 'gros') {
-                if ($item['quantity'] < $price->wholesale_min_qty) {
-                    return $this->error(
-                        "\"{$product->name}\" nécessite min. {$price->wholesale_min_qty} unité(s) pour le prix gros.",
-                        422
-                    );
-                }
-                $unitPrice = $price->wholesale_price;
-            } else {
-                $unitPrice = $price->retail_price;
-            }
+            [$unitPrice, $warning] = $this->resolveUnitPrice($product, $request->sale_type, $item['quantity']);
+            if ($warning) $priceWarnings[] = $warning;
 
             $lineTotal  = $unitPrice * $item['quantity'];
             $subtotal  += $lineTotal;
@@ -175,7 +165,7 @@ class SaleController extends Controller
         ]);
 
         return $this->success(
-            $this->formatSale($sale->load(['items.product', 'cashier:id,name', 'customer:id,name']), collect()),
+            [...$this->formatSale($sale->load(['items.product', 'cashier:id,name', 'customer:id,name']), collect()), 'price_warnings' => $priceWarnings],
             'Vente enregistrée.',
             201
         );
@@ -199,6 +189,7 @@ class SaleController extends Controller
 
         $subtotal  = 0;
         $lineItems = [];
+        $priceWarnings = [];
 
         foreach ($request->items as $item) {
             $product = $products->get($item['product_id']);
@@ -215,18 +206,8 @@ class SaleController extends Controller
                 );
             }
 
-            $price = $product->price;
-            if ($request->sale_type === 'gros') {
-                if ($item['quantity'] < $price->wholesale_min_qty) {
-                    return $this->error(
-                        "\"{$product->name}\" nécessite min. {$price->wholesale_min_qty} unité(s) pour le prix gros.",
-                        422
-                    );
-                }
-                $unitPrice = $price->wholesale_price;
-            } else {
-                $unitPrice = $price->retail_price;
-            }
+            [$unitPrice, $warning] = $this->resolveUnitPrice($product, $request->sale_type, $item['quantity']);
+            if ($warning) $priceWarnings[] = $warning;
 
             $lineTotal  = $unitPrice * $item['quantity'];
             $subtotal  += $lineTotal;
@@ -297,7 +278,7 @@ class SaleController extends Controller
         ]);
 
         return $this->success(
-            $this->formatSale($sale->load(['items.product', 'vendor:id,name'])),
+            [...$this->formatSale($sale->load(['items.product', 'vendor:id,name'])), 'price_warnings' => $priceWarnings],
             'Panier envoyé à la caisse.',
             201
         );
@@ -356,6 +337,7 @@ class SaleController extends Controller
 
             $subtotal  = 0;
             $lineItems = [];
+            $priceWarnings = [];
 
             foreach ($request->items as $item) {
                 $product = $products->get($item['product_id']);
@@ -373,18 +355,8 @@ class SaleController extends Controller
                     );
                 }
 
-                $price = $product->price;
-                if ($saleType === 'gros') {
-                    if ($item['quantity'] < $price->wholesale_min_qty) {
-                        return $this->error(
-                            "\"{$product->name}\" nécessite min. {$price->wholesale_min_qty} unité(s) pour le prix gros.",
-                            422
-                        );
-                    }
-                    $unitPrice = $price->wholesale_price;
-                } else {
-                    $unitPrice = $price->retail_price;
-                }
+                [$unitPrice, $warning] = $this->resolveUnitPrice($product, $saleType, $item['quantity']);
+                if ($warning) $priceWarnings[] = $warning;
 
                 $lineTotal  = $unitPrice * $item['quantity'];
                 $subtotal  += $lineTotal;
@@ -399,6 +371,7 @@ class SaleController extends Controller
         } else {
             $subtotal  = $sale->subtotal;
             $lineItems = null; // aucun changement d'articles
+            $priceWarnings = [];
         }
 
         $discountType  = $request->discount_type ?? $sale->discount_type;
@@ -484,7 +457,7 @@ class SaleController extends Controller
         ]);
 
         return $this->success(
-            $this->formatSale($sale->fresh()->load(['items.product', 'cashier:id,name', 'vendor:id,name', 'customer:id,name'])),
+            [...$this->formatSale($sale->fresh()->load(['items.product', 'cashier:id,name', 'vendor:id,name', 'customer:id,name'])), 'price_warnings' => $priceWarnings],
             'Vente validée.'
         );
     }
@@ -666,6 +639,29 @@ class SaleController extends Controller
         $date  = now()->format('Ymd');
         $count = Sale::whereDate('created_at', today())->count() + 1;
         return 'VTE-' . $date . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Détermine le prix unitaire d'une ligne. En vente gros, si la quantité n'atteint pas
+     * le seuil gros du produit, on bascule automatiquement au prix détail (pas de blocage)
+     * et on remonte un message d'alerte pour information du caissier.
+     */
+    private function resolveUnitPrice(Product $product, string $saleType, int $quantity): array
+    {
+        $price = $product->price;
+
+        if ($saleType === 'gros') {
+            if ($quantity >= $price->wholesale_min_qty) {
+                return [$price->wholesale_price, null];
+            }
+
+            return [
+                $price->retail_price,
+                "\"{$product->name}\" : quantité ({$quantity}) sous le seuil gros ({$price->wholesale_min_qty}) — prix détail appliqué.",
+            ];
+        }
+
+        return [$price->retail_price, null];
     }
 
     private function formatSale(Sale $sale, ?\Illuminate\Support\Collection $refundedByProduct = null): array

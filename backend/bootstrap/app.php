@@ -17,6 +17,18 @@ return Application::configure(basePath: dirname(__DIR__))
             'role'             => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'session.timeout'  => \App\Http\Middleware\CheckSessionTimeout::class,
         ]);
+
+        // Doit s'exécuter AVANT Authenticate : ce dernier résout le guard sanctum et met
+        // à jour last_used_at, ce qui rendrait le contrôle d'inactivité toujours "à jour".
+        // Sans ceci, Laravel réordonne les middlewares selon $middlewarePriority et fait
+        // toujours passer Authenticate en premier, quel que soit l'ordre déclaré en route.
+        // Note : la liste de priorité référence le contrat AuthenticatesRequests, pas la
+        // classe concrète Authenticate — sinon le "before" ne matche rien et l'ajout se
+        // retrouve silencieusement en fin de liste (donc après, pas avant).
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            prepend: \App\Http\Middleware\CheckSessionTimeout::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Toujours renvoyer du JSON pour les routes API

@@ -32,7 +32,9 @@ const api = {
         window.location.href = 'login.html';
         return;
       }
-      throw new Error(json.message || `Erreur ${res.status}`);
+      const err = new Error(json.message || `Erreur ${res.status}`);
+      err.data = json.data;
+      throw err;
     }
 
     return json.data ?? json;

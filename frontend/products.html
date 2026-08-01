@@ -126,15 +126,21 @@
         <div class="products-toolbar">
           <div style="position:relative">
             <i data-lucide="search" class="icon" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-subtle);pointer-events:none"></i>
-            <input class="form-control" id="product-search" placeholder="Rechercher…" style="padding-left:34px;max-width:220px">
+            <input class="form-control" id="product-search" placeholder="Nom ou code-barres…" style="padding-left:34px;max-width:220px">
           </div>
           <select class="form-control form-select" id="product-cat-filter">
             <option value="">Toutes catégories</option>
           </select>
           <select class="form-control form-select" id="product-status-filter">
             <option value="">Tous statuts</option>
-            <option value="1">Actif</option>
-            <option value="0">Inactif</option>
+            <option value="actif">Actif</option>
+            <option value="inactif">Inactif</option>
+          </select>
+          <select class="form-control form-select" id="product-stock-filter">
+            <option value="">Tous stocks</option>
+            <option value="rupture">Rupture</option>
+            <option value="bas">Stock bas</option>
+            <option value="normal">Stock normal</option>
           </select>
         </div>
       </div>
@@ -245,9 +251,46 @@
         </div>
       </div>
     </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-ghost btn-sm hidden" id="btn-price-history" onclick="viewPriceHistory()">
+        <i data-lucide="history" class="icon"></i> Historique des prix
+      </button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-outline" data-dismiss>Annuler</button>
+        <button class="btn btn-primary" id="btn-save-product"><i data-lucide="check" class="icon"></i> Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal historique des prix -->
+<div class="modal-backdrop" id="modal-price-history">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <span class="modal-title">
+        <i data-lucide="history" class="icon" style="color:var(--accent)"></i> Historique des prix
+      </span>
+      <button class="modal-close" data-dismiss><i data-lucide="x" class="icon"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Achat</th>
+              <th>Détail</th>
+              <th>Gros</th>
+              <th>Par</th>
+              <th>Raison</th>
+            </tr>
+          </thead>
+          <tbody id="price-history-tbody"></tbody>
+        </table>
+      </div>
+    </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" data-dismiss>Annuler</button>
-      <button class="btn btn-primary" id="btn-save-product"><i data-lucide="check" class="icon"></i> Enregistrer</button>
+      <button class="btn btn-outline" data-dismiss>Fermer</button>
     </div>
   </div>
 </div>
@@ -380,8 +423,10 @@ async function loadProducts(query = '') {
     if (query) params.set('search', query);
     const catId  = document.getElementById('product-cat-filter').value;
     const status = document.getElementById('product-status-filter').value;
-    if (catId)        params.set('category_id', catId);
-    if (status !== '') params.set('is_active', status);
+    const stock  = document.getElementById('product-stock-filter').value;
+    if (catId)  params.set('category_id', catId);
+    if (status) params.set('status', status);
+    if (stock)  params.set('stock_status', stock);
 
     products = await api.get(`/products?${params}`);
     renderTable('products-tbody', products.map(p => `
@@ -447,8 +492,31 @@ async function editProduct(id) {
   document.getElementById('prod-expiry').value    = p.expiry_date ?? '';
   document.getElementById('prod-desc').value      = p.description ?? '';
   document.getElementById('prod-modal-title').innerHTML = '<i data-lucide="square-pen" class="icon" style="color:var(--accent)"></i> Modifier produit';
+  document.getElementById('btn-price-history').classList.remove('hidden');
   openModal('modal-product');
   refreshIcons();
+}
+
+async function viewPriceHistory() {
+  const id = document.getElementById('prod-id').value;
+  if (!id) return;
+  showTableSkeleton('price-history-tbody', 4);
+  openModal('modal-price-history');
+  try {
+    const history = await api.get(`/products/${id}/price-history`);
+    renderTable('price-history-tbody', history.map(h => `
+      <tr>
+        <td class="text-muted font-sm">${escHtml(h.created_at)}</td>
+        <td>${fmt(h.new_purchase_price)}${h.old_purchase_price !== h.new_purchase_price ? ` <span class="text-muted font-sm">(${fmt(h.old_purchase_price)})</span>` : ''}</td>
+        <td>${fmt(h.new_retail_price)}${h.old_retail_price !== h.new_retail_price ? ` <span class="text-muted font-sm">(${fmt(h.old_retail_price)})</span>` : ''}</td>
+        <td>${fmt(h.new_wholesale_price)}${h.old_wholesale_price !== h.new_wholesale_price ? ` <span class="text-muted font-sm">(${fmt(h.old_wholesale_price)})</span>` : ''}</td>
+        <td class="text-muted font-sm">${escHtml(h.changed_by ?? '—')}</td>
+        <td class="text-muted font-sm">${escHtml(h.reason ?? '—')}</td>
+      </tr>`), 'Aucun changement de prix enregistré', 'history');
+  } catch (err) {
+    toast(err.message, 'danger');
+    renderTable('price-history-tbody', [], 'Erreur de chargement', 'triangle-alert');
+  }
 }
 
 async function toggleProduct(id) {
@@ -473,6 +541,7 @@ function bindEvents() {
   });
   document.getElementById('product-cat-filter').addEventListener('change', () => loadProducts());
   document.getElementById('product-status-filter').addEventListener('change', () => loadProducts());
+  document.getElementById('product-stock-filter').addEventListener('change', () => loadProducts());
 
   document.getElementById('btn-bulk-price').addEventListener('click', openBulkPriceModal);
   document.getElementById('btn-bulk-price-submit').addEventListener('click', submitBulkPrice);
@@ -507,6 +576,7 @@ function bindEvents() {
     document.getElementById('prod-cat').value  = '';
     document.getElementById('prod-unit').value = '';
     document.getElementById('prod-modal-title').innerHTML = '<i data-lucide="tag" class="icon" style="color:var(--accent)"></i> Nouveau produit';
+    document.getElementById('btn-price-history').classList.add('hidden');
     openModal('modal-product');
     refreshIcons();
   });
@@ -529,13 +599,29 @@ function bindEvents() {
     if (!body.name || !body.category_id || !body.unit || !body.retail_price || !body.purchase_price) {
       toast('Remplissez les champs obligatoires', 'warning'); return;
     }
+    async function submit() {
+      if (id) return api.put(`/products/${id}`, body);
+      return api.post('/products', body);
+    }
+
     try {
-      if (id) await api.put(`/products/${id}`, body);
-      else    await api.post('/products', body);
+      await submit();
       closeModal('modal-product');
       toast('Produit enregistré', 'success');
       loadProducts();
-    } catch (err) { toast(err.message, 'danger'); }
+    } catch (err) {
+      if (err.data?.price_below_cost && confirm(`${err.message}\n\nContinuer quand même ?`)) {
+        body.confirm_below_cost = true;
+        try {
+          await submit();
+          closeModal('modal-product');
+          toast('Produit enregistré', 'success');
+          loadProducts();
+          return;
+        } catch (err2) { toast(err2.message, 'danger'); return; }
+      }
+      toast(err.message, 'danger');
+    }
   });
 }
 

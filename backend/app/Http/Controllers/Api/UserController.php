@@ -143,7 +143,15 @@ class UserController extends Controller
         $logs = $user->activityLogs()
             ->latest()
             ->limit(100)
-            ->get(['action', 'model_type', 'model_id', 'details', 'ip_address', 'created_at']);
+            ->get(['action', 'model_type', 'model_id', 'details', 'ip_address', 'created_at'])
+            ->map(fn($log) => [
+                'action'     => $log->action,
+                'model_type' => $log->model_type ? class_basename($log->model_type) : null,
+                'model_id'   => $log->model_id,
+                'details'    => $log->details,
+                'ip_address' => $log->ip_address,
+                'created_at' => $log->created_at->format('d/m/Y H:i'),
+            ]);
 
         return $this->success($logs);
     }

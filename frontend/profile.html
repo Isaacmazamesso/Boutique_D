@@ -140,6 +140,7 @@ requireAuth();
 async function loadProfile() {
   try {
     const me = await api.get('/auth/me');
+    if (me.session_timeout_minutes) localStorage.setItem('session_timeout_minutes', String(me.session_timeout_minutes));
     document.getElementById('profile-avatar').textContent = me.name.charAt(0).toUpperCase();
     document.getElementById('profile-name').textContent = me.name;
     document.getElementById('profile-role').textContent = me.role;

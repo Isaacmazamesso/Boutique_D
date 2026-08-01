@@ -15,9 +15,16 @@ class ProductController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        // ILIKE est specifique a Postgres (prod) ; SQLite (tests) n'a pas cet operateur mais
+        // son LIKE est deja insensible a la casse pour l'ASCII, donc equivalent ici.
+        $likeOperator = DB::connection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+
         $query = Product::with(['category', 'price', 'stock'])
             ->when($request->search, fn($q) =>
-                $q->where('name', 'ilike', '%' . $request->search . '%')
+                $q->where(fn($w) => $w
+                    ->where('name', $likeOperator, '%' . $request->search . '%')
+                    ->orWhere('barcode', $likeOperator, '%' . $request->search . '%')
+                )
             )
             ->when($request->category_id, fn($q) =>
                 $q->where('category_id', $request->category_id)
@@ -34,6 +41,11 @@ class ProductController extends Controller
             ->when($request->stock_status === 'bas', fn($q) =>
                 $q->whereHas('stock', fn($s) =>
                     $s->whereRaw('quantity > 0 AND quantity <= products.min_stock_alert')
+                )
+            )
+            ->when($request->stock_status === 'normal', fn($q) =>
+                $q->whereHas('stock', fn($s) =>
+                    $s->whereRaw('quantity > products.min_stock_alert')
                 )
             )
             ->orderBy('name');
@@ -60,9 +72,14 @@ class ProductController extends Controller
             'retail_price'       => 'required|integer|min:0',
             'wholesale_price'    => 'required|integer|min:0',
             'wholesale_min_qty'  => 'nullable|integer|min:1',
+            'confirm_below_cost' => 'nullable|boolean',
         ]);
 
-        $this->validatePrices($request);
+        if ($response = $this->rejectIfBelowCostUnconfirmed(
+            $request, $request->purchase_price, $request->retail_price, $request->wholesale_price
+        )) {
+            return $response;
+        }
 
         $product = Product::create([
             'category_id'     => $request->category_id,
@@ -122,7 +139,20 @@ class ProductController extends Controller
             'retail_price'      => 'sometimes|integer|min:0',
             'wholesale_price'   => 'sometimes|integer|min:0',
             'wholesale_min_qty' => 'nullable|integer|min:1',
+            'confirm_below_cost' => 'nullable|boolean',
         ]);
+
+        if ($request->hasAny(['purchase_price', 'retail_price', 'wholesale_price']) && $product->price) {
+            $effectivePurchase  = $request->purchase_price  ?? $product->price->purchase_price;
+            $effectiveRetail    = $request->retail_price    ?? $product->price->retail_price;
+            $effectiveWholesale = $request->wholesale_price ?? $product->price->wholesale_price;
+
+            if ($response = $this->rejectIfBelowCostUnconfirmed(
+                $request, $effectivePurchase, $effectiveRetail, $effectiveWholesale
+            )) {
+                return $response;
+            }
+        }
 
         $product->update($request->only([
             'name', 'category_id', 'unit', 'barcode',
@@ -271,21 +301,48 @@ class ProductController extends Controller
             ->with('changedBy:id,name')
             ->latest()
             ->limit(50)
-            ->get();
+            ->get()
+            ->map(fn($h) => [
+                'id'                   => $h->id,
+                'changed_by'           => $h->changedBy?->name,
+                'old_purchase_price'   => $h->old_purchase_price,
+                'new_purchase_price'   => $h->new_purchase_price,
+                'old_retail_price'     => $h->old_retail_price,
+                'new_retail_price'     => $h->new_retail_price,
+                'old_wholesale_price'  => $h->old_wholesale_price,
+                'new_wholesale_price'  => $h->new_wholesale_price,
+                'reason'               => $h->reason,
+                'created_at'           => $h->created_at->format('d/m/Y H:i'),
+            ]);
 
         return $this->success($history);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private function validatePrices(Request $request): void
+    /**
+     * Bloque un prix de vente sous le prix d'achat, sauf confirmation explicite
+     * (confirm_below_cost). Retourne une réponse d'erreur si le blocage s'applique, sinon null.
+     */
+    private function rejectIfBelowCostUnconfirmed(Request $request, int $purchase, ?int $retail, ?int $wholesale): ?JsonResponse
     {
-        $purchase = $request->purchase_price;
-        $retail   = $request->retail_price;
-        $wholesale= $request->wholesale_price;
+        $violations = [];
+        if ($retail !== null && $retail < $purchase) {
+            $violations[] = "le prix détail ({$retail} FCFA) serait inférieur au prix d'achat ({$purchase} FCFA)";
+        }
+        if ($wholesale !== null && $wholesale < $purchase) {
+            $violations[] = "le prix gros ({$wholesale} FCFA) serait inférieur au prix d'achat ({$purchase} FCFA)";
+        }
 
-        // Avertissement si prix de vente < prix d'achat (géré côté front)
-        // La règle stricte est appliquée uniquement par le propriétaire
+        if (empty($violations) || $request->boolean('confirm_below_cost')) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Attention : ' . implode(' et ', $violations) . '. Confirmez pour vendre à perte.',
+            'data'    => ['price_below_cost' => true],
+        ], 422);
     }
 
     private function updatePrices(Request $request, Product $product): void

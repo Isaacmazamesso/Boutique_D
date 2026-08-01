@@ -13,7 +13,7 @@ class SettingControllerTest extends TestCase
 {
     use RefreshDatabase, CreatesShopData;
 
-    public function test_les_5_parametres_sont_exposes_avec_leurs_valeurs_par_defaut(): void
+    public function test_les_6_parametres_sont_exposes_avec_leurs_valeurs_par_defaut(): void
     {
         $owner = $this->makeUser('proprietaire');
 
@@ -22,7 +22,7 @@ class SettingControllerTest extends TestCase
 
         $response->assertOk();
         $data = $response->json('data');
-        $this->assertCount(5, $data);
+        $this->assertCount(6, $data);
 
         $byKey = collect($data)->keyBy('key');
         $this->assertSame(10,    $byKey['remise_max_sans_auth']['value']);
@@ -31,6 +31,7 @@ class SettingControllerTest extends TestCase
         $this->assertSame(20,    $byKey['sortie_stock_max']['value']);
         $this->assertSame(2000,  $byKey['ecart_caisse_alerte']['value']);
         $this->assertSame(7,     $byKey['peremption_alerte_jours']['value']);
+        $this->assertSame(30,    $byKey['inactivite_max_minutes']['value']);
     }
 
     public function test_la_mise_a_jour_persiste_et_se_reflete_immediatement(): void

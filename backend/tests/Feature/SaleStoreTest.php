@@ -27,17 +27,23 @@ class SaleStoreTest extends TestCase
         $this->assertSame(3, $product->stock->fresh()->quantity, 'le stock ne doit pas bouger sur un refus');
     }
 
-    public function test_quantite_gros_sous_le_minimum_refuse(): void
+    public function test_quantite_gros_sous_le_minimum_bascule_au_detail_avec_alerte(): void
     {
         $cashier = $this->makeUser('caissier');
         $this->openSession($cashier);
         $product = $this->makeProduct(retail: 500, stockQty: 100); // wholesale_min_qty = 12
 
         Sanctum::actingAs($cashier);
-        $this->postJson('/api/sales', [
+        $response = $this->postJson('/api/sales', [
             'sale_type' => 'gros', 'payment_method' => 'especes', 'amount_paid' => 5000,
             'items' => [['product_id' => $product->id, 'quantity' => 5]],
-        ])->assertStatus(422);
+        ]);
+
+        // Le cahier des charges (module 4.1) demande un basculement automatique au prix
+        // détail avec simple alerte, pas un blocage de la vente.
+        $response->assertCreated();
+        $this->assertSame(2500, $response->json('data.total'), '5 x prix detail 500 = 2500 (pas le prix gros)');
+        $this->assertNotEmpty($response->json('data.price_warnings'));
     }
 
     public function test_prix_gros_applique_au_dela_du_minimum(): void

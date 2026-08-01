@@ -904,6 +904,9 @@ async function processSale(total, subtotal, remise, method, saleType, amountPaid
       ? await api.post(`/sales/${pendingSaleId}/validate`, body)
       : await api.post('/sales', body);
     closeModal('modal-payment');
+    if (sale.price_warnings?.length) {
+      toast(sale.price_warnings.join(' '), 'warning', 6000);
+    }
     showReceipt(sale);
     cart = [];
     discount = { type: null, value: 0 };
